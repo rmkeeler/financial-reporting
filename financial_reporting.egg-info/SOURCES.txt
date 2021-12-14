@@ -1,0 +1,7 @@
+setup.py
+financial_reporting.egg-info/PKG-INFO
+financial_reporting.egg-info/SOURCES.txt
+financial_reporting.egg-info/dependency_links.txt
+financial_reporting.egg-info/top_level.txt
+modules/__init__.py
+modules/class.py
