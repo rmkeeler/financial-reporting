@@ -1,4 +1,5 @@
 from definitions import WEBDRIVER_PATH
+from time import sleep
 
 # Analysis packages
 import numpy as np
@@ -31,6 +32,11 @@ def clean_numeric(text, frmat = float):
 
     return frmat(clean_text)
 
+def clean_statement_heading(heading):
+    clean_heading = re.sub(' ','_',heading).lower()
+
+    return clean_heading
+
 def create_webdriver():
     """
     Create and return a Chrome web driver for use in this app's scraping functions.
@@ -58,7 +64,7 @@ def create_webdriver():
 
     return driver
 
-def get_income_rows(webdriver, ticker_symbol):
+def get_statement_rows(webdriver, ticker_symbol, statement_name):
     """
     Get income statement for company = ticker_symbol from yahoo finance.
 
@@ -66,15 +72,34 @@ def get_income_rows(webdriver, ticker_symbol):
 
     Recommended use case is passing the output to the following dictify_income() function to get a proper
     income statement dict with many more use cases.
+
+    Statement name takes one of 3 values: is, bs, cfs. Determines how button clicking/row expansion will work.
     """
-    print("Requesting income statement DOM from Yahoo Finance...")
-    url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
+    statement_pages = {'is':'financials',
+    'bs':'balance-sheet',
+    'cfs':'cash-flow'}
+
+    print("Requesting statement DOM from Yahoo Finance...")
+    url = 'https://finance.yahoo.com/quote/{}/{}'.format(ticker_symbol,statement_pages[statement_name])
     # Open the page in webdriver
     webdriver.get(url)
 
-    # Expand the OpEx row on the page
-    opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
-    opex_button.click()
+    # Expand the OpEx row on the page, if getting income statement
+    if statement_name == 'is':
+        while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
+            # building in a second of pause to let the page load before attempting the click
+            # assumption is that statement will always have at least one expandable row in it
+            # if no expandable rows visible, assume page hasn't loaded
+            sleep(1)
+
+        opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
+        opex_button.click()
+    elif statement_name == 'bs':
+        print('Getting balance sheet. No row expansions.')
+    elif statement_name == 'cfs':
+        print('Getting cash flow. No row expansions.')
+    else:
+        print('No statement_name provided. Not expanding any of the statement rows')
 
     # Get the page's soup
     soup = BeautifulSoup(webdriver.page_source, 'lxml')
@@ -87,22 +112,22 @@ def get_income_rows(webdriver, ticker_symbol):
 
     return statement_heading, statement_rows
 
-def dictify_income(statement_heading, statement_rows):
+def dictify_statement(statement_heading, statement_rows):
     """
     Takes an income statement heading and a list of income statement rows as returned by get_income_statement().
     Literally, these are sets of divs from the yahoo finance page's dom.
 
     Gets rid of all the dom baggage and returns a simple dict of income statement rows.
     """
-    print("Parsing income statement DOM...")
+    print("Parsing statement DOM...")
     # Instantiate the income_dict
-    income_dict = dict()
+    statement_dict = dict()
     # Instantiate a subtotal row component lookup dict for later
     subrows_dict = dict()
 
     ## STEP 1: Get the years column before doing anything else. Requires special process.
     # We take indices [2:], because first two columns are the row name ("breakdown") and a blank column for formatting
-    income_dict['Year'] = np.array([x.text for x in statement_heading[2:]])
+    statement_dict['year'] = np.array([x.text for x in statement_heading[2:]])
 
     ## STEP 2.PREAMBLE: Establish the mode number of columns in the income statement
     # We'll use this to weed out subheader rows that have been expanded (subheader rows will show more columns than mode value)
@@ -125,9 +150,9 @@ def dictify_income(statement_heading, statement_rows):
 
             # Light cleaning: get rid of commas, replace '-' with zero, format all values as floats rather than text
             rowvals = np.array([clean_numeric(x.text) for x in cols])
-            rowname = row.select_one('div:first-child').find_all('div')[0].text
+            rowname = clean_statement_heading(row.select_one('div:first-child').find_all('div')[0].text)
 
-            income_dict[rowname] = rowvals
+            statement_dict[rowname] = rowvals
         elif len(cols) > col_mode:
             # Handle subtotal rows by documenting them and their components in a separate dict.
             # company class will store it as an attribute
@@ -136,7 +161,7 @@ def dictify_income(statement_heading, statement_rows):
             subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
             subrows_dict[subtotal_name] = subtotal_components
 
-    return income_dict, subrows_dict
+    return statement_dict, subrows_dict
 
 def get_income_statement(ticker):
     """
@@ -144,7 +169,29 @@ def get_income_statement(ticker):
     """
     print('Getting income statement for {}...'.format(ticker))
     driver = create_webdriver()
-    income_heading, income_rows = get_income_rows(driver, ticker)
-    income_dict, subrows_dict = dictify_income(income_heading, income_rows)
+    income_heading, income_rows = get_statement_rows(driver, ticker, 'is')
+    income_dict, subrows_dict = dictify_statement(income_heading, income_rows)
     print('\n')
     return income_dict, subrows_dict
+
+def get_balance_sheet(ticker):
+    """
+    Run all necessary functions above to get an income statement dict at once.
+    """
+    print('Getting balance sheet for {}...'.format(ticker))
+    driver = create_webdriver()
+    balance_heading, balance_rows = get_statement_rows(driver, ticker, 'bs')
+    balance_dict, subrows_dict = dictify_statement(balance_heading, balance_rows)
+    print('\n')
+    return balance_dict, subrows_dict
+
+def get_cash_flow(ticker):
+    """
+    Run all necessary functions above to get an income statement dict at once.
+    """
+    print('Getting cash flow statement for {}...'.format(ticker))
+    driver = create_webdriver()
+    cash_heading, cash_rows = get_statement_rows(driver, ticker, 'cfs')
+    cash_dict, subrows_dict = dictify_statement(cash_heading, cash_rows)
+    print('\n')
+    return cash_dict, subrows_dict
