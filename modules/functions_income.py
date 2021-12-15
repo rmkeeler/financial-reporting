@@ -38,6 +38,7 @@ def create_webdriver():
     We're using a webdriver instead of just raw requests, because yahoo finance income statement rows
     sometimes need to be expanded with an HTML button (like OpEx).
     """
+    print("Creating web driver...")
     # Specify the file of the driver to be used
     driver_name = 'chromedriver.exe'
 
@@ -66,12 +67,14 @@ def get_income_rows(webdriver, ticker_symbol):
     Recommended use case is passing the output to the following dictify_income() function to get a proper
     income statement dict with many more use cases.
     """
+    print("Requesting income statement DOM from Yahoo Finance...")
     url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
     # Open the page in webdriver
     webdriver.get(url)
 
     # Expand the OpEx row on the page
-    webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]').click()
+    opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
+    opex_button.click()
 
     # Get the page's soup
     soup = BeautifulSoup(webdriver.page_source, 'lxml')
@@ -91,8 +94,11 @@ def dictify_income(statement_heading, statement_rows):
 
     Gets rid of all the dom baggage and returns a simple dict of income statement rows.
     """
+    print("Parsing income statement DOM...")
     # Instantiate the income_dict
     income_dict = dict()
+    # Instantiate a subtotal row component lookup dict for later
+    subrows_dict = dict()
 
     ## STEP 1: Get the years column before doing anything else. Requires special process.
     # We take indices [2:], because first two columns are the row name ("breakdown") and a blank column for formatting
@@ -122,14 +128,23 @@ def dictify_income(statement_heading, statement_rows):
             rowname = row.select_one('div:first-child').find_all('div')[0].text
 
             income_dict[rowname] = rowvals
+        elif len(cols) > col_mode:
+            # Handle subtotal rows by documenting them and their components in a separate dict.
+            # company class will store it as an attribute
+            # Analyses using company class can then use it as a lookup object to group statement rows when desired
+            subtotal_name = row.find('button').find_parent('div')['title']
+            subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
+            subrows_dict[subtotal_name] = subtotal_components
 
-    return income_dict
+    return income_dict, subrows_dict
 
 def get_income_statement(ticker):
     """
     Run all necessary functions above to get an income statement dict at once.
     """
+    print('Getting income statement for {}...'.format(ticker))
     driver = create_webdriver()
     income_heading, income_rows = get_income_rows(driver, ticker)
-    income_dict = dictify_income(income_heading, income_rows)
-    return income_dict
+    income_dict, subrows_dict = dictify_income(income_heading, income_rows)
+    print('\n')
+    return income_dict, subrows_dict
