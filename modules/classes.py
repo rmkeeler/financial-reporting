@@ -11,10 +11,12 @@ Further analysis can be done on the object's attributes.
 """
 
 from definitions import WEBDRIVER_PATH
+from definitions import OUTPUT_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
-from modules.functions_income import get_income_statement, get_balance_sheet, get_cash_flow
+from modules.functions_financials import get_income_statement, get_balance_sheet, get_cash_flow
+from modules.functions_filemanagement import save_dictlike
 
 class company():
     """
@@ -37,6 +39,7 @@ class company():
         as automatically calculated trends of financial ratios.
         """
         self.ticker = ticker_symbol
+        self.contained_statements = initial_statements
 
         # FINANCIAL STATEMENTS
         self.income_statement_url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
@@ -52,3 +55,28 @@ class company():
         if 'is' in initial_statements:
             self.gross_margin = self.income_statement['gross_profit'] / self.income_statement['total_revenue']
             self.operating_margin = self.income_statement['operating_income'] / self.income_statement['total_revenue']
+
+            self.sga_percent = self.income_statement['selling_general_and_administrative'] / self.income_statement['total_revenue']
+            self.rnd_percent = self.income_statement['research_and_development'] / self.income_statement['total_revenue']
+
+    def save_statements(self, statements = None):
+        """
+        Save statements stored in the instance to csv file after converting to dataframe.
+        """
+        if statements == None:
+            statements = self.contained_statements
+
+        print('Statements to be saved: {}'.format(statements))
+        if 'is' in statements:
+            filename = OUTPUT_PATH + self.ticker + '_is.csv'
+            save_dictlike(self.income_statement, filename)
+
+        if 'bs' in statements:
+            filename = OUTPUT_PATH + self.ticker + '_bs.csv'
+            save_dictlike(self.balance_sheet, filename)
+
+        if 'cfs' in statements:
+            filename = OUTPUT_PATH + self.ticker + '_cfs.csv'
+            save_dictlike(self.cash_flow, filename)
+
+        return None

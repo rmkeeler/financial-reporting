@@ -33,7 +33,7 @@ def clean_numeric(text, frmat = float):
     return frmat(clean_text)
 
 def clean_statement_heading(heading):
-    clean_heading = re.sub(' ','_',heading).lower()
+    clean_heading = re.sub(' ','_',heading).replace('&','and').lower()
 
     return clean_heading
 
@@ -91,7 +91,7 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
             # assumption is that statement will always have at least one expandable row in it
             # if no expandable rows visible, assume page hasn't loaded
             sleep(1)
-
+        sleep(1) # pause an extra second, because this is still failing to work
         opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
         opex_button.click()
     elif statement_name == 'bs':
@@ -159,7 +159,7 @@ def dictify_statement(statement_heading, statement_rows):
             # Analyses using company class can then use it as a lookup object to group statement rows when desired
             subtotal_name = row.find('button').find_parent('div')['title']
             subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
-            subrows_dict[subtotal_name] = subtotal_components
+            subrows_dict[clean_statement_heading(subtotal_name)] = [clean_statement_heading(x) for x in subtotal_components]
 
     return statement_dict, subrows_dict
 
