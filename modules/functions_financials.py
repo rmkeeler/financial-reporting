@@ -55,6 +55,7 @@ def create_webdriver():
     options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
+    options.add_argument('--log-level=3')
 
     # Instantiate driver service
     service = Service(WEBDRIVER_PATH + driver_name)
@@ -157,9 +158,11 @@ def dictify_statement(statement_heading, statement_rows):
             # Handle subtotal rows by documenting them and their components in a separate dict.
             # company class will store it as an attribute
             # Analyses using company class can then use it as a lookup object to group statement rows when desired
-            subtotal_name = row.find('button').find_parent('div')['title']
+            subtotal_name = clean_statement_heading(row.find('button').find_parent('div')['title'])
             subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
-            subrows_dict[clean_statement_heading(subtotal_name)] = [clean_statement_heading(x) for x in subtotal_components]
+
+            for val in subtotal_components:
+                subrows_dict[clean_statement_heading(val)] = subtotal_name
 
     return statement_dict, subrows_dict
 

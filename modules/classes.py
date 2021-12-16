@@ -26,7 +26,7 @@ class company():
     Automatically calculates key financial ratios from those documents in
     numpy arrays for easy trending.
     """
-    def __init__(self, ticker_symbol, initial_statements=['is','bs','cfs']):
+    def __init__(self, ticker_symbol = None, initial_statements=['is','bs','cfs']):
         """
         Just provide a ticker symbol and optionally list the statements with
         which to pop your instance.
@@ -38,18 +38,20 @@ class company():
         In return, the instance will store the statement(s) you wanted as well
         as automatically calculated trends of financial ratios.
         """
+        initial_statements = [] if ticker_symbol == None else initial_statements
+
         self.ticker = ticker_symbol
         self.contained_statements = initial_statements
 
         # FINANCIAL STATEMENTS
         self.income_statement_url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
-        self.income_statement, self.income_subrows = get_income_statement(ticker_symbol) if 'is' in initial_statements else (dict(), dict())
+        self.income_statement, self.income_component_lookup = get_income_statement(ticker_symbol) if 'is' in initial_statements else (dict(), dict())
 
         self.balance_sheet_url = 'https://finance.yahoo.com/quote/{}/balance-sheet'.format(ticker_symbol)
-        self.balance_sheet, self.balance_subrows = get_balance_sheet(ticker_symbol) if 'bs' in initial_statements else (dict(), dict())
+        self.balance_sheet, self.balance_component_lookup = get_balance_sheet(ticker_symbol) if 'bs' in initial_statements else (dict(), dict())
 
         self.cash_flow_url = 'https://finance.yahoo.com/quote/{}/cash-flow'.format(ticker_symbol)
-        self.cash_flow, self.cash_subrows = get_cash_flow(ticker_symbol) if 'cfs' in initial_statements else (dict(), dict())
+        self.cash_flow, self.cash_component_lookup = get_cash_flow(ticker_symbol) if 'cfs' in initial_statements else (dict(), dict())
 
         # FINANCIAL RATIOS - INCOME
         if 'is' in initial_statements:
@@ -61,7 +63,8 @@ class company():
 
     def save_statements(self, statements = None):
         """
-        Save statements stored in the instance to csv file after converting to dataframe.
+        Save statements stored in the instance to csv file after
+        converting to dataframe and long structure.
         """
         if statements == None:
             statements = self.contained_statements
@@ -69,7 +72,7 @@ class company():
         print('Statements to be saved: {}'.format(statements))
         if 'is' in statements:
             filename = OUTPUT_PATH + self.ticker + '_is.csv'
-            save_dictlike(self.income_statement, filename)
+            save_dictlike(self.income_statement, filename, self.income_component_lookup)
 
         if 'bs' in statements:
             filename = OUTPUT_PATH + self.ticker + '_bs.csv'
