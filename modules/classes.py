@@ -68,6 +68,7 @@ class company():
 
             self.sga_percent = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
             self.rnd_percent = metrics_is['research_and_development'] / metrics_is['total_revenue']
+
     def save_statements(self, statements = None):
         """
         Save statements stored in the instance to csv file after
