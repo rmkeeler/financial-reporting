@@ -164,37 +164,19 @@ def dictify_statement(statement_heading, statement_rows):
             for val in subtotal_components:
                 subrows_dict[clean_statement_heading(val)] = subtotal_name
 
-    return statement_dict, subrows_dict
+    dictified_statement = dict(lookup = subrows_dict, statement = statement_dict)
 
-def get_income_statement(ticker):
+    return dictified_statement
+
+def scrape_statement(ticker, statement):
     """
     Run all necessary functions above to get an income statement dict at once.
-    """
-    print('Getting income statement for {}...'.format(ticker))
-    driver = create_webdriver()
-    income_heading, income_rows = get_statement_rows(driver, ticker, 'is')
-    income_dict, subrows_dict = dictify_statement(income_heading, income_rows)
-    print('\n')
-    return income_dict, subrows_dict
 
-def get_balance_sheet(ticker):
+    statement argument: is, bs or cfs. (income, balance, cash flow)
     """
-    Run all necessary functions above to get an income statement dict at once.
-    """
-    print('Getting balance sheet for {}...'.format(ticker))
+    print('Getting {} statement for {}...'.format(statement, ticker))
     driver = create_webdriver()
-    balance_heading, balance_rows = get_statement_rows(driver, ticker, 'bs')
-    balance_dict, subrows_dict = dictify_statement(balance_heading, balance_rows)
+    statement_heading, statement_rows = get_statement_rows(driver, ticker, statement)
+    statement_dict = dictify_statement(statement_heading, statement_rows)
     print('\n')
-    return balance_dict, subrows_dict
-
-def get_cash_flow(ticker):
-    """
-    Run all necessary functions above to get an income statement dict at once.
-    """
-    print('Getting cash flow statement for {}...'.format(ticker))
-    driver = create_webdriver()
-    cash_heading, cash_rows = get_statement_rows(driver, ticker, 'cfs')
-    cash_dict, subrows_dict = dictify_statement(cash_heading, cash_rows)
-    print('\n')
-    return cash_dict, subrows_dict
+    return statement_dict

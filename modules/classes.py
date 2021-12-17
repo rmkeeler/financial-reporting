@@ -15,8 +15,8 @@ from definitions import OUTPUT_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
-from modules.functions_financials import get_income_statement, get_balance_sheet, get_cash_flow
-from modules.functions_filemanagement import save_dictlike
+from modules.functions_scraping import scrape_statement
+from modules.functions_files import save_statement, import_statement
 
 class company():
     """
@@ -26,7 +26,7 @@ class company():
     Automatically calculates key financial ratios from those documents in
     numpy arrays for easy trending.
     """
-    def __init__(self, ticker_symbol = None, initial_statements=['is','bs','cfs']):
+    def __init__(self, ticker_symbol = None, initial_statements=['is','bs','cfs'], method = 'import'):
         """
         Just provide a ticker symbol and optionally list the statements with
         which to pop your instance.
@@ -34,6 +34,9 @@ class company():
         is = income statement
         bs = balance sheet
         cfs = cash flow statement
+
+        "method" argument tells the class to populate an instance by scraping for the ticker company's
+        data or by importing it from the output folder in the project directory.
 
         In return, the instance will store the statement(s) you wanted as well
         as automatically calculated trends of financial ratios.
@@ -45,22 +48,26 @@ class company():
 
         # FINANCIAL STATEMENTS
         self.income_statement_url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
-        self.income_statement, self.income_component_lookup = get_income_statement(ticker_symbol) if 'is' in initial_statements else (dict(), dict())
-
         self.balance_sheet_url = 'https://finance.yahoo.com/quote/{}/balance-sheet'.format(ticker_symbol)
-        self.balance_sheet, self.balance_component_lookup = get_balance_sheet(ticker_symbol) if 'bs' in initial_statements else (dict(), dict())
-
         self.cash_flow_url = 'https://finance.yahoo.com/quote/{}/cash-flow'.format(ticker_symbol)
-        self.cash_flow, self.cash_component_lookup = get_cash_flow(ticker_symbol) if 'cfs' in initial_statements else (dict(), dict())
+
+        if method == 'scrape':
+            self.income_statement = scrape_statement(ticker_symbol, 'is') if 'is' in initial_statements else dict()
+            self.balance_sheet = scrape_statement(ticker_symbol, 'bs') if 'bs' in initial_statements else dict()
+            self.cash_flow = scrape_statement(ticker_symbol, 'cfs') if 'cfs' in initial_statements else dict()
+        elif method == 'import':
+            self.income_statement = import_statement(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
+            self.balance_sheet = import_statement(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
+            self.cash_flow = import_statement(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
 
         # FINANCIAL RATIOS - INCOME
         if 'is' in initial_statements:
-            self.gross_margin = self.income_statement['gross_profit'] / self.income_statement['total_revenue']
-            self.operating_margin = self.income_statement['operating_income'] / self.income_statement['total_revenue']
+            metrics_is = self.income_statement['statement']
+            self.gross_margin = metrics_is['gross_profit'] / metrics_is['total_revenue']
+            self.operating_margin = metrics_is['operating_income'] / metrics_is['total_revenue']
 
-            self.sga_percent = self.income_statement['selling_general_and_administrative'] / self.income_statement['total_revenue']
-            self.rnd_percent = self.income_statement['research_and_development'] / self.income_statement['total_revenue']
-
+            self.sga_percent = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
+            self.rnd_percent = metrics_is['research_and_development'] / metrics_is['total_revenue']
     def save_statements(self, statements = None):
         """
         Save statements stored in the instance to csv file after
@@ -71,15 +78,15 @@ class company():
 
         print('Statements to be saved: {}'.format(statements))
         if 'is' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_is.csv'
-            save_dictlike(self.income_statement, filename, self.income_component_lookup)
+            filename = OUTPUT_PATH + self.ticker + '_is.json'
+            save_statement(self.income_statement, filename)
 
         if 'bs' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_bs.csv'
-            save_dictlike(self.balance_sheet, filename)
+            filename = OUTPUT_PATH + self.ticker + '_bs.json'
+            save_statement(self.balance_sheet, filename)
 
         if 'cfs' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_cfs.csv'
-            save_dictlike(self.cash_flow, filename)
+            filename = OUTPUT_PATH + self.ticker + '_cfs.json'
+            save_statement(self.cash_flow, filename)
 
         return None
