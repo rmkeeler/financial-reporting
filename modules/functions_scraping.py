@@ -52,7 +52,7 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    #options.add_argument('--headless')
+    options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
     options.add_argument('--log-level=3')
