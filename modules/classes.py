@@ -60,15 +60,26 @@ class company():
             self.balance_sheet = import_statement(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
             self.cash_flow = import_statement(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
 
-        # FINANCIAL RATIOS - INCOME
-        if 'is' in initial_statements:
-            metrics_is = self.income_statement['statement']
-            self.gross_margin = metrics_is['gross_profit'] / metrics_is['total_revenue']
-            self.operating_margin = metrics_is['operating_income'] / metrics_is['total_revenue']
+    def calculate_metrics(self):
+        """
+        Simply refreshes the metrics stored in the company object's 'metrics' index.
 
-            self.cogs_percent = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
-            self.sga_percent = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
-            self.rnd_percent = metrics_is['research_and_development'] / metrics_is['total_revenue']
+        Pulling it out as a method rather than initializing with these attributes
+        because certain methods will add data to the 'statements' indices of statement
+        attributes, and this method will allow the object to recalculate its metrics
+        after each addition or other update.
+        """
+        if 'is' in self.contained_statements:
+            metrics_is = self.income_statement['statement']
+            self.income_statement['metrics'] = dict()
+            self.income_statement['metrics']['gross_margin'] = metrics_is['gross_profit'] / metrics_is['total_revenue']
+            self.income_statement['metrics']['operating_margin'] = metrics_is['operating_income'] / metrics_is['total_revenue']
+
+            self.income_statement['metrics']['cogs_percent'] = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
+            self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
+            self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
+            if 'operating_expense' in self.income_statement['statement'].keys():
+                self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
 
     def save_statements(self, statements = None):
         """
@@ -90,5 +101,31 @@ class company():
         if 'cfs' in statements:
             filename = OUTPUT_PATH + self.ticker + '_cfs.json'
             save_statement(self.cash_flow, filename)
+
+        return None
+
+    def aggregate_rows(self, statement = 'is'):
+        """
+        Aggregates the rows of statement['statement'] that are noted in
+        statement['lookup'] and returns a np array of the values over the time
+        period stored in the company object. Useful for plotting.
+
+        Updates the statement attribute of the object. For example, income statement
+        aggregates will be stored in self.income_statement['aggregates'].
+        """
+        function_options = {'is':self.income_statement,
+        'bs':self.balance_sheet,
+        'cfs':self.cash_flow}
+
+        if statement not in function_options.keys():
+            raise ValueError('statement argument must be is, bs or cfs. {} was provided.'.format(statement))
+
+        statement_obj = function_options[statement]
+
+        for key in statement_obj['lookup'].keys():
+            rows_dict = {k:v for k, v in statement_obj['statement'].items() if k in statement_obj['lookup'][key]}
+            function_options[statement]['statement'][key] = sum(rows_dict.values())
+
+        self.calculate_metrics()
 
         return None

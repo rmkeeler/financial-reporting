@@ -160,9 +160,13 @@ def dictify_statement(statement_heading, statement_rows):
             # Analyses using company class can then use it as a lookup object to group statement rows when desired
             subtotal_name = clean_statement_heading(row.find('button').find_parent('div')['title'])
             subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
+            subrows_dict[subtotal_name] = [clean_statement_heading(x) for x in subtotal_components]
 
-            for val in subtotal_components:
-                subrows_dict[clean_statement_heading(val)] = subtotal_name
+            # Commenting out the below, because it produces a dict that is friendly
+            # to dataframes--creating a column with pd.apply().
+            # Above method better for json.
+            #for val in subtotal_components:
+                #subrows_dict[clean_statement_heading(val)] = subtotal_name
 
     dictified_statement = dict(lookup = subrows_dict, statement = statement_dict)
 
