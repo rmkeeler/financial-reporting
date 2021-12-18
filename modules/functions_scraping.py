@@ -52,7 +52,7 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    options.add_argument('--headless')
+    #options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
     options.add_argument('--log-level=3')
@@ -96,7 +96,23 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
         opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
         opex_button.click()
     elif statement_name == 'bs':
-        print('Getting balance sheet. No row expansions.')
+        while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
+            # building in a second of pause to let the page load before attempting the click
+            # assumption is that statement will always have at least one expandable row in it
+            # if no expandable rows visible, assume page hasn't loaded
+            sleep(1)
+        sleep(1) # pause an extra second, because this is still failing to work
+
+        # Balance sheet strat is opening two levels of buttons to reveal the
+        # Analysis-ready balance sheet
+        button_xpath = '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]'
+
+        for i in range(2):
+            # Expand rows. Then do it again.
+            buttons = webdriver.find_elements(By.XPATH, button_xpath)
+            for button in buttons:
+                button.click()
+
     elif statement_name == 'cfs':
         print('Getting cash flow. No row expansions.')
     else:
@@ -119,6 +135,9 @@ def dictify_statement(statement_heading, statement_rows):
     Literally, these are sets of divs from the yahoo finance page's dom.
 
     Gets rid of all the dom baggage and returns a simple dict of income statement rows.
+
+    NOTE: THIS FUNCTION CAN'T HANDLE THE BALANCE SHEET YET, BECAUSE IT DOES NOT KNOW
+    HOW TO CREATE THE LOOKUP ENTRY FROM TWO LEVELS OF ROW EXPANSIONS.
     """
     print("Parsing statement DOM...")
     # Instantiate the income_dict
