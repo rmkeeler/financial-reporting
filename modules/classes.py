@@ -66,6 +66,7 @@ class company():
             self.gross_margin = metrics_is['gross_profit'] / metrics_is['total_revenue']
             self.operating_margin = metrics_is['operating_income'] / metrics_is['total_revenue']
 
+            self.cogs_percent = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
             self.sga_percent = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
             self.rnd_percent = metrics_is['research_and_development'] / metrics_is['total_revenue']
 
