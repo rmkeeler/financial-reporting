@@ -107,7 +107,7 @@ class company():
     def aggregate_rows(self, statement = 'is'):
         """
         Aggregates the rows of statement['statement'] that are noted in
-        statement['lookup'] and returns a np array of the values over the time
+        statement['groupings'] and returns a np array of the values over the time
         period stored in the company object. Useful for plotting.
 
         Updates the statement attribute of the object. For example, income statement
@@ -122,8 +122,8 @@ class company():
 
         statement_obj = function_options[statement]
 
-        for key in statement_obj['lookup'].keys():
-            rows_dict = {k:v for k, v in statement_obj['statement'].items() if k in statement_obj['lookup'][key]}
+        for key in statement_obj['groupings'].keys():
+            rows_dict = {k:v for k, v in statement_obj['statement'].items() if k in statement_obj['groupings'][key]}
             function_options[statement]['statement'][key] = sum(rows_dict.values())
 
         self.calculate_metrics()

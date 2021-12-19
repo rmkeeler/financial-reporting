@@ -41,24 +41,25 @@ def clean_statement_heading(heading):
 
     return clean_heading
 
-def expand_statement_rows(webdriver, levels = 1):
+def extract_row_name(row_text):
     """
-    Get all rows of a financial statement in expansion order.
-    Get rows -> expand rows -> get rows, etc. until iterator runs out.
+    Method I'm using to grab yahoo finance statement rows produces at one point
+    lines of text that concatenate a row name with the values in all of the row's
+    columns.
 
-    Intended as a helper function of get_statement_rows() in this module.
+    Example: Current Assets47,249,00031,239,00028,787,00029,500,000
+
+    This function cleans that up and returns just the row name (Current Assets).
+    Also cleans the names using clean_statement_heading so they're ready to be
+    added to a statement's dictionary.
     """
-    statement_rows = list()
+    step_one = re.sub('[0-9]+','|',re.sub(',','',row_text)).rsplit('|',1)[0].split('|')[1:]
+    # yahoo fin statements use '-' instead of zero
+    # gets confusing when a row's name is hyphenated
+    # need this second step to process hyphens in the right way
+    step_two = [x.strip('-') for x in step_one if re.search('[^\-]+',x)]
 
-    for i in range(levels):
-        buttons = webdriver.find_elements(By.XPATH, '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]')
-        soup = BeautifulSoup(webdriver.page_source, 'lxml')
-        statement_rows += soup.find_all('div',{'data-test':'fin-row'})
-        if i < levels - 1:
-            for button in buttons:
-                button.click()
-
-    return statement_rows, soup
+    return step_two
 
 def create_webdriver():
     """
@@ -87,6 +88,43 @@ def create_webdriver():
     driver = webdriver.Chrome(service = service, options = options)
 
     return driver
+
+def expand_statement_rows(webdriver, levels = 1):
+    """
+    Get all rows of a financial statement in expansion order.
+    Get rows -> expand rows -> get rows, etc. until iterator runs out.
+
+    Intended as a helper function of get_statement_rows() in this module.
+    """
+    statement_rows = list()
+
+    for i in range(levels):
+        buttons = webdriver.find_elements(By.XPATH, '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]')
+        soup = BeautifulSoup(webdriver.page_source, 'lxml')
+        statement_rows += soup.find_all('div',{'data-test':'fin-row'})
+        if i < levels - 1:
+            for button in buttons:
+                button.click()
+
+    return statement_rows, soup
+
+def get_statement_groupings(webdriver, levels = 1):
+    """
+    Progress levels deep into the statement in the webdriver.
+    At each level, document the statement line items.
+    Build a dictionary mapping levels to their sublevels.
+    i.e. "Total Assets" contains "Current Assets" and "Non-Current Assets"
+    """
+    # Create a copy of the webdriver, so we don't have to keep making web requests
+    # To refresh the page and unexpand all expanded rows
+
+    # Start at the top level.
+    # Put first level button titles in first level of groupings dict.
+    # Expand the first item at top level.
+    # Repeat to pop second level of first dict entry with the items that appear.
+    groupings = None
+
+    return groupings
 
 def get_statement_rows(webdriver, ticker_symbol, statement_name):
     """
@@ -197,8 +235,9 @@ def dictify_statement(statement_heading, statement_rows):
             # company class will store it as an attribute
             # Analyses using company class can then use it as a lookup object to group statement rows when desired
             subtotal_name = clean_statement_heading(row.find('button').find_parent('div')['title'])
-            subtotal_components = re.sub('[0-9]+','|',re.sub(',','',row.text)).rsplit('|',1)[0].split('|')[1:]
-            subtotal_components = [x.strip('-') for x in subtotal_components if re.search('[^\-]+',x)]
+            subtotal_components = extract_row_name(row.text)
+            #subtotal_components = re.sub('[0-9]+','|',re.sub(',','',row.text)).rsplit('|',1)[0].split('|')[1:]
+            #subtotal_components = [x.strip('-') for x in subtotal_components if re.search('[^\-]+',x)]
             subrows_dict[subtotal_name] = [clean_statement_heading(x) for x in subtotal_components]
 
             # Commenting out the below, because it produces a dict that is friendly
@@ -207,7 +246,7 @@ def dictify_statement(statement_heading, statement_rows):
             #for val in subtotal_components:
                 #subrows_dict[clean_statement_heading(val)] = subtotal_name
 
-    dictified_statement = dict(lookup = subrows_dict, statement = statement_dict)
+    dictified_statement = dict(groupings = subrows_dict, statement = statement_dict)
 
     return dictified_statement
 
