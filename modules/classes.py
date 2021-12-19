@@ -103,29 +103,3 @@ class company():
             save_statement(self.cash_flow, filename)
 
         return None
-
-    def aggregate_rows(self, statement = 'is'):
-        """
-        Aggregates the rows of statement['statement'] that are noted in
-        statement['groupings'] and returns a np array of the values over the time
-        period stored in the company object. Useful for plotting.
-
-        Updates the statement attribute of the object. For example, income statement
-        aggregates will be stored in self.income_statement['aggregates'].
-        """
-        function_options = {'is':self.income_statement,
-        'bs':self.balance_sheet,
-        'cfs':self.cash_flow}
-
-        if statement not in function_options.keys():
-            raise ValueError('statement argument must be is, bs or cfs. {} was provided.'.format(statement))
-
-        statement_obj = function_options[statement]
-
-        for key in statement_obj['groupings'].keys():
-            rows_dict = {k:v for k, v in statement_obj['statement'].items() if k in statement_obj['groupings'][key]}
-            function_options[statement]['statement'][key] = sum(rows_dict.values())
-
-        self.calculate_metrics()
-
-        return None

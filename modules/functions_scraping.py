@@ -99,6 +99,10 @@ def expand_statement_rows(webdriver, levels = 1):
     statement_rows = list()
 
     for i in range(levels):
+        # Find buttons that haven't been clicks, yet. Sections that haven't been expanded.
+        # These are marked by an arrow icon pointing to the right
+        # Expanded rows are marked by arrow icon pointing down
+        # This makes sure we aren't double counting rows after we expand them.
         buttons = webdriver.find_elements(By.XPATH, '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]')
         soup = BeautifulSoup(webdriver.page_source, 'lxml')
         statement_rows += soup.find_all('div',{'data-test':'fin-row'})
@@ -107,24 +111,6 @@ def expand_statement_rows(webdriver, levels = 1):
                 button.click()
 
     return statement_rows, soup
-
-def get_statement_groupings(webdriver, levels = 1):
-    """
-    Progress levels deep into the statement in the webdriver.
-    At each level, document the statement line items.
-    Build a dictionary mapping levels to their sublevels.
-    i.e. "Total Assets" contains "Current Assets" and "Non-Current Assets"
-    """
-    # Create a copy of the webdriver, so we don't have to keep making web requests
-    # To refresh the page and unexpand all expanded rows
-
-    # Start at the top level.
-    # Put first level button titles in first level of groupings dict.
-    # Expand the first item at top level.
-    # Repeat to pop second level of first dict entry with the items that appear.
-    groupings = None
-
-    return groupings
 
 def get_statement_rows(webdriver, ticker_symbol, statement_name):
     """
@@ -137,9 +123,11 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
 
     Statement name takes one of 3 values: is, bs, cfs. Determines how button clicking/row expansion will work.
     """
-    statement_pages = {'is':'financials',
+    statement_pages = {
+    'is':'financials',
     'bs':'balance-sheet',
-    'cfs':'cash-flow'}
+    'cfs':'cash-flow'
+    }
 
     print("Requesting statement DOM from Yahoo Finance...")
     url = 'https://finance.yahoo.com/quote/{}/{}'.format(ticker_symbol,statement_pages[statement_name])
@@ -147,36 +135,25 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
     webdriver.get(url)
 
     # Expand the OpEx row on the page, if getting income statement
-    if statement_name == 'is':
-        while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
-            # building in a second of pause to let the page load before attempting the click
-            # assumption is that statement will always have at least one expandable row in it
-            # if no expandable rows visible, assume page hasn't loaded
-            sleep(1)
-        sleep(1) # pause an extra second, because this is still failing to work
-        opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
-        opex_button.click()
+    desired_levels = {
+    'is':2,
+    'bs':3,
+    'cfs':2
+    }
 
-        # Get list of divs from the page source that correspond to income statement rows
-        soup = BeautifulSoup(webdriver.page_source, 'lxml')
-        statement_rows = soup.find_all('div',{'data-test':'fin-row'})
+    # Throw an error when statement name is invalid to call out the reason
+    # expand_statement_rows() will break, below.
+    if statement_name not in desired_levels.keys():
+        raise ValueError('Invalid statement name provided. Should be is, bs or cfs. Is {}'.format(statement_name))
 
-    elif statement_name == 'bs':
-        while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
-            # building in a second of pause to let the page load before attempting the click
-            # assumption is that statement will always have at least one expandable row in it
-            # if no expandable rows visible, assume page hasn't loaded
-            sleep(1)
-        sleep(1) # pause an extra second, because this is still failing to work
+    while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
+        # building in a second of pause to let the page load before attempting the click
+        # assumption is that statement will always have at least one expandable row in it
+        # if no expandable rows visible, assume page hasn't loaded
+        sleep(1)
+    sleep(1) # pause an extra second, because this is still failing to work
 
-        # Balance sheet strat is opening two levels of buttons to reveal the
-        # Analysis-ready balance sheet
-        statement_rows, soup = expand_statement_rows(webdriver, levels = 3)
-
-    elif statement_name == 'cfs':
-        print('Getting cash flow. No row expansions.')
-    else:
-        print('No statement_name provided. Not expanding any of the statement rows')
+    statement_rows, soup = expand_statement_rows(webdriver, levels = desired_levels[statement_name])
 
     # Get the income statement's heading
     statement_heading = soup.find('div',{'class':'D(tbhg)'}).select_one('div:first-child').find_all('div')
@@ -230,23 +207,8 @@ def dictify_statement(statement_heading, statement_rows):
             rowname = clean_statement_heading(row.select_one('div:first-child').find_all('div')[0].text)
 
             statement_dict[rowname] = rowvals
-        elif len(cols) > col_mode:
-            # Handle subtotal rows by documenting them and their components in a separate dict.
-            # company class will store it as an attribute
-            # Analyses using company class can then use it as a lookup object to group statement rows when desired
-            subtotal_name = clean_statement_heading(row.find('button').find_parent('div')['title'])
-            subtotal_components = extract_row_name(row.text)
-            #subtotal_components = re.sub('[0-9]+','|',re.sub(',','',row.text)).rsplit('|',1)[0].split('|')[1:]
-            #subtotal_components = [x.strip('-') for x in subtotal_components if re.search('[^\-]+',x)]
-            subrows_dict[subtotal_name] = [clean_statement_heading(x) for x in subtotal_components]
 
-            # Commenting out the below, because it produces a dict that is friendly
-            # to dataframes--creating a column with pd.apply().
-            # Above method better for json.
-            #for val in subtotal_components:
-                #subrows_dict[clean_statement_heading(val)] = subtotal_name
-
-    dictified_statement = dict(groupings = subrows_dict, statement = statement_dict)
+    dictified_statement = dict(groupings = dict(), statement = statement_dict)
 
     return dictified_statement
 
