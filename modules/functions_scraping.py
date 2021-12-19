@@ -33,9 +33,32 @@ def clean_numeric(text, frmat = float):
     return frmat(clean_text)
 
 def clean_statement_heading(heading):
+    """
+    Helper function of dictify_statement(). Cleans out normal garbage from
+    table heading strings.
+    """
     clean_heading = re.sub(' ','_',heading).replace('&','and').lower()
 
     return clean_heading
+
+def expand_statement_rows(webdriver, levels = 1):
+    """
+    Get all rows of a financial statement in expansion order.
+    Get rows -> expand rows -> get rows, etc. until iterator runs out.
+
+    Intended as a helper function of get_statement_rows() in this module.
+    """
+    statement_rows = list()
+
+    for i in range(levels):
+        buttons = webdriver.find_elements(By.XPATH, '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]')
+        soup = BeautifulSoup(webdriver.page_source, 'lxml')
+        statement_rows += soup.find_all('div',{'data-test':'fin-row'})
+        if i < levels - 1:
+            for button in buttons:
+                button.click()
+
+    return statement_rows, soup
 
 def create_webdriver():
     """
@@ -52,7 +75,7 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    options.add_argument('--headless')
+    #options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
     options.add_argument('--log-level=3')
@@ -95,6 +118,11 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
         sleep(1) # pause an extra second, because this is still failing to work
         opex_button = webdriver.find_element(By.XPATH, '//button[@aria-label="Operating Expense"]')
         opex_button.click()
+
+        # Get list of divs from the page source that correspond to income statement rows
+        soup = BeautifulSoup(webdriver.page_source, 'lxml')
+        statement_rows = soup.find_all('div',{'data-test':'fin-row'})
+
     elif statement_name == 'bs':
         while len(webdriver.find_elements(By.XPATH, '//button')) == 0:
             # building in a second of pause to let the page load before attempting the click
@@ -105,27 +133,18 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
 
         # Balance sheet strat is opening two levels of buttons to reveal the
         # Analysis-ready balance sheet
-        button_xpath = '//div[@data-test="fin-row"]//*[local-name()="svg" and @data-icon="caret-right"]'
-
-        for i in range(2):
-            # Expand rows. Then do it again.
-            buttons = webdriver.find_elements(By.XPATH, button_xpath)
-            for button in buttons:
-                button.click()
+        statement_rows, soup = expand_statement_rows(webdriver, levels = 3)
 
     elif statement_name == 'cfs':
         print('Getting cash flow. No row expansions.')
     else:
         print('No statement_name provided. Not expanding any of the statement rows')
 
-    # Get the page's soup
-    soup = BeautifulSoup(webdriver.page_source, 'lxml')
-
     # Get the income statement's heading
     statement_heading = soup.find('div',{'class':'D(tbhg)'}).select_one('div:first-child').find_all('div')
 
     # Get list of divs from the page source that correspond to income statement rows
-    statement_rows = soup.find_all('div',{'data-test':'fin-row'})
+
 
     return statement_heading, statement_rows
 
@@ -178,7 +197,8 @@ def dictify_statement(statement_heading, statement_rows):
             # company class will store it as an attribute
             # Analyses using company class can then use it as a lookup object to group statement rows when desired
             subtotal_name = clean_statement_heading(row.find('button').find_parent('div')['title'])
-            subtotal_components = re.sub('[0-9,\-]+','|',row.text).rsplit('|',1)[0].split('|')[1:]
+            subtotal_components = re.sub('[0-9]+','|',re.sub(',','',row.text)).rsplit('|',1)[0].split('|')[1:]
+            subtotal_components = [x.strip('-') for x in subtotal_components if re.search('[^\-]+',x)]
             subrows_dict[subtotal_name] = [clean_statement_heading(x) for x in subtotal_components]
 
             # Commenting out the below, because it produces a dict that is friendly
