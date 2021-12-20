@@ -76,7 +76,7 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    #options.add_argument('--headless')
+    options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
     options.add_argument('--log-level=3')
@@ -163,15 +163,16 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
 
     return statement_heading, statement_rows
 
-def dictify_statement(statement_heading, statement_rows):
+def dictify_statement(statement_heading, statement_rows, ticker_symbol):
     """
-    Takes an income statement heading and a list of income statement rows as returned by get_income_statement().
+    Takes a statement heading and a list of statement rows as returned by get_statement().
     Literally, these are sets of divs from the yahoo finance page's dom.
 
-    Gets rid of all the dom baggage and returns a simple dict of income statement rows.
+    Gets rid of all the dom baggage and returns a simple dict of statement rows.
 
-    NOTE: THIS FUNCTION CAN'T HANDLE THE BALANCE SHEET YET, BECAUSE IT DOES NOT KNOW
-    HOW TO CREATE THE LOOKUP ENTRY FROM TWO LEVELS OF ROW EXPANSIONS.
+    ticker_symbol just lets this function create a top-level dict entry for the
+    name of the company. This will help functions that operate on multiple company
+    objects understand which company the object belongs to.
     """
     print("Parsing statement DOM...")
     # Instantiate the income_dict
@@ -208,7 +209,7 @@ def dictify_statement(statement_heading, statement_rows):
 
             statement_dict[rowname] = rowvals
 
-    dictified_statement = dict(groupings = dict(), statement = statement_dict)
+    dictified_statement = dict(company = ticker_symbol, groupings = dict(), statement = statement_dict)
 
     return dictified_statement
 
@@ -221,6 +222,6 @@ def scrape_statement(ticker, statement):
     print('Getting {} statement for {}...'.format(statement, ticker))
     driver = create_webdriver()
     statement_heading, statement_rows = get_statement_rows(driver, ticker, statement)
-    statement_dict = dictify_statement(statement_heading, statement_rows)
+    statement_dict = dictify_statement(statement_heading, statement_rows, ticker)
     print('\n')
     return statement_dict
