@@ -59,17 +59,23 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         for key in co.keys():
             if key != 'company' and metric in co[key].keys():
                 metric_location = key
-        co_metric = co[metric_location][metric]
+                co_metric = co[metric_location][metric]
+
+        try:
+            test = co_metric
+        except:
+            print('{} not found in statement. Double check the statement objects in companies_statements argument.'.format(metric))
 
         x_var = co['statement']['year']
 
         plot = go.Scatter(
-        mode = 'lines+markers',
-        line = dict(color = colors[i], width = 4),
-        marker = dict(color = 'black', size = 10, symbol = 'line-ns-open'),
-        x = [adjust_date(x, 1) if x != 'ttm' else x for x in x_var][::-1],
-        y = np.flip(co_metric), # need to reverse x and y bc default is present - past order.
-        name = co['company']
+            mode = 'lines+markers',
+            line = dict(color = colors[i], width = 4),
+            marker = dict(color = 'black', size = 10, symbol = 'line-ns-open'),
+            x = [adjust_date(x, 1) if x != 'ttm' else x for x in x_var][::-1],
+            # need to reverse x and y bc default is present - past order
+            y = np.flip(co_metric) / 1000000 if metric_location == 'statement' else np.flip(co_metric),
+            name = co['company']
         )
 
         data.append(plot)
@@ -77,8 +83,8 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
     layout = dict(
         title = 'Contrasting {}'.format(metric),
         plot_bgcolor = 'white',
-        height = 350,
-        width = 800,
+        height = 400,
+        width = 600,
         xaxis = dict(
             title = 'Year',
             showgrid = False,
@@ -86,11 +92,11 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
             linecolor = 'black'
             ),
         yaxis = dict(
-            title = metric,
+            title = metric + ' USD (MM)' if metric_location == 'statement' else 'Ratio USD',
             showgrid = False,
             showline = True,
             linecolor = 'black',
-            tickformat = ',.0'
+            tickformat = ',' if metric_location == 'statement' else ',.0%'
             )
     )
 

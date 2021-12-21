@@ -17,6 +17,10 @@ sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
 from modules.functions_scraping import scrape_statement
 from modules.functions_files import save_statement, import_statement
+from modules.functions_plotting import adjust_date
+
+import numpy as np
+import plotly.graph_objects as go
 
 class company():
     """
@@ -81,6 +85,13 @@ class company():
             if 'operating_expense' in self.income_statement['statement'].keys():
                 self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
 
+        if 'bs' in self.contained_statements:
+            metrics_bs = self.balance_sheet['statement']
+            self.balance_sheet['metrics'] = dict()
+            self.balance_sheet['metrics']['current_ratio'] = metrics_bs['current_assets'] / metrics_bs['current_liabilities']
+            self.balance_sheet['metrics']['debt_equity_ratio'] = metrics_bs['total_liabilities_net_minority_interest'] / metrics_bs['total_equity_gross_minority_interest']
+
+
     def save_statements(self, statements = None):
         """
         Save statements stored in the instance to csv file after
@@ -103,3 +114,71 @@ class company():
             save_statement(self.cash_flow, filename)
 
         return None
+
+    def plot_metrics(self, statement, metrics, colors = ['darkblue','orange','lightblue','black','green']):
+        """
+        Trends one or more metrics for the company to whom the object belongs.
+
+        args:
+            statement: string. is, bs or cfs. the statement in the company object
+            from which to draw metrics for plotting.
+
+            metrics: list of strings corresponding to keys in the ['statement']
+            or ['metrics'] dicts of the given statement.
+
+            colors: list of colors to be applied to series in the plotly trend.
+            colors indices correspond to metrics indices.
+        """
+        statement_codes = {
+        'is':self.income_statement,
+        'bs':self.balance_sheet,
+        'cfs':self.cash_flow
+        }
+
+        if statement not in statement_codes.keys():
+            raise ValueError('Invalid statement argument. Should be is, bs or cfs. You provided {}'.format(statement))
+
+        statement = statement_codes[statement]
+
+        data = []
+        x_var = [adjust_date(x, 1) if x != 'ttm' else x for x in statement['statement']['year']][::-1]
+        for i, metric in enumerate(metrics):
+            for key in statement.keys():
+                if key != 'company' and metric in statement[key].keys():
+                    metric_location = key
+                    metric_vals = statement[metric_location][metric]
+
+            plot = go.Scatter(
+                mode = 'lines+markers',
+                line = dict(color = colors[i], width = 4),
+                marker = dict(color = 'black', size = 10, symbol = 'line-ns-open'),
+                x = x_var,
+                y = np.flip(metric_vals) / 1000000 if metric_location == 'statement' else np.flip(metric_vals),
+                name = metric
+            )
+
+            data.append(plot)
+
+        layout = dict(
+            title = 'Contrasting Metrics for {}'.format(statement['company']),
+            plot_bgcolor = 'white',
+            height = 400,
+            width = 600,
+            xaxis = dict(
+                title = 'Year',
+                showgrid = False,
+                showline = True,
+                linecolor = 'black'
+            ),
+            yaxis = dict(
+            title = 'US Dollars (MM)' if metric_location == 'statement' else 'Ratio USD',
+            showgrid = False,
+            showline = True,
+            linecolor = 'black',
+            tickformat = ',.0%' if metric_location == 'metrics' else ','
+            )
+        )
+
+        fig = go.Figure(data = data, layout = layout)
+
+        return fig
