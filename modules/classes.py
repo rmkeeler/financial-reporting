@@ -91,6 +91,17 @@ class company():
             self.balance_sheet['metrics']['current_ratio'] = metrics_bs['current_assets'] / metrics_bs['current_liabilities']
             self.balance_sheet['metrics']['debt_equity_ratio'] = metrics_bs['total_liabilities_net_minority_interest'] / metrics_bs['total_equity_gross_minority_interest']
 
+        if 'cfs' in self.contained_statements:
+            metrics_cfs = self.cash_flow['statement']
+            self.cash_flow['metrics'] = dict()
+            if 'bs' in self.contained_statements:
+                # NOTE: Need to take indices 1: of cash flow arrays, here
+                # Balance sheet doesn't have a value for ttm
+                # So its arrays will always be 1 shorter than is and cfs arrays
+                self.cash_flow['metrics']['operatingcf_ratio'] = metrics_cfs['operating_cash_flow'][1:] / metrics_bs['total_liabilities_net_minority_interest']
+            if 'is' in self.contained_statements:
+                # NOTE: basic average shares not reported for ttm, so need to take [1:] for both metrics in operatingcf_per_share
+                self.cash_flow['metrics']['operatingcf_per_share'] = metrics_cfs['operating_cash_flow'][1:] / metrics_is['basic_average_shares'][1:]
 
     def save_statements(self, statements = None):
         """
