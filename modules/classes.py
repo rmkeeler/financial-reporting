@@ -175,6 +175,7 @@ class company():
             plot_bgcolor = 'white',
             height = 400,
             width = 600,
+            hovermode = 'x unified',
             xaxis = dict(
                 title = 'Year',
                 showgrid = False,
@@ -182,11 +183,11 @@ class company():
                 linecolor = 'black'
             ),
             yaxis = dict(
-            title = 'US Dollars (MM)' if metric_location == 'statement' else 'Ratio USD',
-            showgrid = False,
-            showline = True,
-            linecolor = 'black',
-            tickformat = ',.0%' if metric_location == 'metrics' else ','
+                title = 'US Dollars (MM)' if metric_location == 'statement' else 'Ratio USD',
+                showgrid = False,
+                showline = True,
+                linecolor = 'black',
+                tickformat = ',.0%' if metric_location == 'metrics' else ','
             )
         )
 

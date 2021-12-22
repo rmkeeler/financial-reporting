@@ -85,6 +85,7 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         plot_bgcolor = 'white',
         height = 400,
         width = 600,
+        hovermode = 'x unified',
         xaxis = dict(
             title = 'Year',
             showgrid = False,
