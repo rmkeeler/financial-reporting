@@ -20,6 +20,7 @@ from modules.functions_files import save_statement, import_statement
 from modules.functions_plotting import adjust_date
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
 class company():
@@ -194,3 +195,14 @@ class company():
         fig = go.Figure(data = data, layout = layout)
 
         return fig
+
+    def __repr__(self):
+        """
+        Calling a company object without an attribute or method will
+        display the object's metadata.
+        """
+
+        header = '|||{} Object Metadata|||\n'.format(self.ticker)
+        data = [['Statements Available', '{}'.format(self.contained_statements)]]
+
+        return header + str(pd.DataFrame(data = [x[1] for x in data], index = [x[0] for x in data], columns = ['']))
