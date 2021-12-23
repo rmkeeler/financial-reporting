@@ -206,3 +206,57 @@ class company():
         data = [['Statements Available', '{}'.format(self.contained_statements)]]
 
         return header + str(pd.DataFrame(data = [x[1] for x in data], index = [x[0] for x in data], columns = ['']))
+
+    def __add__(self, other):
+        """
+        Adding instances of this class will add the statements together.
+
+        Returns a new instance of the combined statements. Metrics can be
+        recalculated at this combined level on the new instance.
+
+        Imagined use case is combining several companies into a market or a
+        segment of companies. Individual company instances can then be
+        contrasted with this segment instance.
+
+        TO DO: some statement items are calculated (EPS, for example). Can't
+        simply add them together. Need to recalculate with components from
+        self and other income statement.
+
+        TO DO: need to work out balance sheet and cash flow additions.
+
+        TO DO: need to get segment_dict entries into a new object and then
+        return the object rather than segment_dict.
+        """
+        # Instantiate a dict that will hold combined statements.
+        segment_dict = dict()
+
+        # Instantiate empty entry in segment dict for each statement
+        segment_dict['is'] = dict()
+        segment_dict['bs'] = dict()
+        segment_dict['cfs'] = dict()
+
+        # Figure out which statements each object has.
+        self_statements = {
+        'is':self.income_statement['statement'] if 'is' in self.contained_statements else 'Unavailable',
+        'bs':self.balance_sheet['statement'] if 'bs' in self.contained_statements else 'Unavailable',
+        'cfs':self.cash_flow['statement'] if 'cfs' in self.contained_statements else 'Unavailable'
+        }
+
+        other_statements = {
+        'is':other.income_statement['statement'] if 'is' in other.contained_statements else 'Unavailable',
+        'bs':other.balance_sheet['statement'] if 'bs' in other.contained_statements else 'Unavailable',
+        'cfs':other.cash_flow['statement'] if 'cfs' in other.contained_statements else 'Unavailable'
+        }
+
+        # Only attempt to add statements if both objects have the statement
+        if isinstance(self_statements['is'], dict) and isinstance(other_statements['is'], dict):
+            for key in other_statements['is']:
+                # Need to handle year in a special way
+                # For now, assume company year spans are equivalent
+                # Need to work out how to handle differing instance time frames
+                if key == 'year' and key in self_statements['is']:
+                    segment_dict['is'][key] = self_statements['is'][key]
+                elif key != 'year' and key in self_statements['is']:
+                    segment_dict['is'][key] = self_statements['is'][key] + other_statements['is'][key]
+
+        return segment_dict
