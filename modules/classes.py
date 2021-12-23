@@ -51,15 +51,24 @@ class company():
         self.ticker = ticker_symbol
         self.contained_statements = initial_statements
 
+        # point out rows in gathered statements that are calculations rather
+        # than simply reported measurements.
+        # we'll remove these from statements and recalculate them as metrics
+        # this will make it easier to add company instances in reasonable ways
+        # with __add__() method
+        self.metrics_rows = {'is' : ['Basic EPS','Diluted EPS','Tax Rate for Calcs'],
+                                'bs' : [],
+                                'cfs' : []}
+
         # FINANCIAL STATEMENTS
         self.income_statement_url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
         self.balance_sheet_url = 'https://finance.yahoo.com/quote/{}/balance-sheet'.format(ticker_symbol)
         self.cash_flow_url = 'https://finance.yahoo.com/quote/{}/cash-flow'.format(ticker_symbol)
 
         if method == 'scrape':
-            self.income_statement = scrape_statement(ticker_symbol, 'is') if 'is' in initial_statements else dict()
-            self.balance_sheet = scrape_statement(ticker_symbol, 'bs') if 'bs' in initial_statements else dict()
-            self.cash_flow = scrape_statement(ticker_symbol, 'cfs') if 'cfs' in initial_statements else dict()
+            self.income_statement = scrape_statement(ticker_symbol, 'is', skip_rows = self.metrics_rows) if 'is' in initial_statements else dict()
+            self.balance_sheet = scrape_statement(ticker_symbol, 'bs', skip_rows = self.metrics_rows) if 'bs' in initial_statements else dict()
+            self.cash_flow = scrape_statement(ticker_symbol, 'cfs', skip_rows = self.metrics_rows) if 'cfs' in initial_statements else dict()
         elif method == 'import':
             self.income_statement = import_statement(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
             self.balance_sheet = import_statement(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()

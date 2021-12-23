@@ -163,7 +163,7 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
 
     return statement_heading, statement_rows
 
-def dictify_statement(statement_heading, statement_rows, ticker_symbol):
+def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_rows = None):
     """
     Takes a statement heading and a list of statement rows as returned by get_statement().
     Literally, these are sets of divs from the yahoo finance page's dom.
@@ -207,13 +207,21 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol):
             rowvals = np.array([clean_numeric(x.text) for x in cols])
             rowname = clean_statement_heading(row.select_one('div:first-child').find_all('div')[0].text)
 
-            statement_dict[rowname] = rowvals
+            # get all values from skip_rows into a single list to let us
+            # skip those rows in the following step
+            skip_vals = []
+            for x in list(skip_rows.values()):
+                skip_vals += x
+
+            if skip_rows != None:
+                if rowname not in [clean_statement_heading(x) for x in skip_vals]:
+                    statement_dict[rowname] = rowvals
 
     dictified_statement = dict(company = ticker_symbol, groupings = dict(), statement = statement_dict)
 
     return dictified_statement
 
-def scrape_statement(ticker, statement):
+def scrape_statement(ticker, statement, skip_rows):
     """
     Run all necessary functions above to get an income statement dict at once.
 
@@ -222,6 +230,6 @@ def scrape_statement(ticker, statement):
     print('Getting {} statement for {}...'.format(statement, ticker))
     driver = create_webdriver()
     statement_heading, statement_rows = get_statement_rows(driver, ticker, statement)
-    statement_dict = dictify_statement(statement_heading, statement_rows, ticker)
+    statement_dict = dictify_statement(statement_heading, statement_rows, ticker, skip_rows)
     print('\n')
     return statement_dict
