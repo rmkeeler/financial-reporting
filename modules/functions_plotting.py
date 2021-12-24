@@ -66,13 +66,13 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         except:
             print('{} not found in statement. Double check the statement objects in companies_statements argument.'.format(metric))
 
-        x_var = co['statement']['year']
+        x_var = co['statement']['year_adjusted']
 
         plot = go.Scatter(
             mode = 'lines+markers',
             line = dict(color = colors[i], width = 4),
             marker = dict(color = 'black', size = 10, symbol = 'line-ns-open'),
-            x = [adjust_date(x, 1) if x != 'ttm' else x for x in x_var][::-1],
+            x = x_var[::-1],
             # need to reverse x and y bc default is present - past order
             y = np.flip(co_metric) / 1000000 if metric_location == 'statement' else np.flip(co_metric),
             name = co['company']

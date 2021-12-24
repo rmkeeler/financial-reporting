@@ -170,7 +170,7 @@ class company():
         statement = statement_codes[statement]
 
         data = []
-        x_var = [adjust_date(x, 1) if x != 'ttm' else x for x in statement['statement']['year']][::-1]
+        x_var = statement['statement']['year_adjusted'][::-1]
         for i, metric in enumerate(metrics):
             for key in statement.keys():
                 if key != 'company' and metric in statement[key].keys():

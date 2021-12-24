@@ -1,4 +1,5 @@
 from definitions import WEBDRIVER_PATH
+from modules.functions_plotting import adjust_date
 from time import sleep
 
 # Analysis packages
@@ -183,6 +184,11 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_row
     ## STEP 1: Get the years column before doing anything else. Requires special process.
     # We take indices [2:], because first two columns are the row name ("breakdown") and a blank column for formatting
     statement_dict['year'] = np.array([x.text for x in statement_heading[2:]])
+    # Create a default adjusted year field in each statement
+    # Take all statement dates back 6 months to avoid problems like
+    # A 1/31 report date being considered current year when it describes previous year
+    # 6 months just seems reasonable. July is when a report date can be considered current year
+    statement_dict['year_adjusted'] = [adjust_date(x, 6) if x != 'ttm' else x for x in statement_dict['year']]
 
     ## STEP 2.PREAMBLE: Establish the mode number of columns in the income statement
     # We'll use this to weed out subheader rows that have been expanded (subheader rows will show more columns than mode value)
