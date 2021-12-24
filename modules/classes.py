@@ -57,7 +57,7 @@ class company():
         # this will make it easier to add company instances in reasonable ways
         # with __add__() method
         self.metrics_rows = {'is' : ['Basic EPS','Diluted EPS','Tax Rate for Calcs'],
-                                'bs' : [],
+                                'bs' : ['Working Capital'],
                                 'cfs' : []}
 
         # FINANCIAL STATEMENTS
@@ -86,24 +86,32 @@ class company():
         if 'is' in self.contained_statements:
             metrics_is = self.income_statement['statement']
             self.income_statement['metrics'] = dict()
+
             self.income_statement['metrics']['gross_margin'] = metrics_is['gross_profit'] / metrics_is['total_revenue']
             self.income_statement['metrics']['operating_margin'] = metrics_is['operating_income'] / metrics_is['total_revenue']
 
             self.income_statement['metrics']['cogs_percent'] = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
             self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
             self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
-            if 'operating_expense' in self.income_statement['statement'].keys():
-                self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
+            self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
+
+            self.income_statement['metrics']['tax_rate'] = metrics_is['tax_provision'] / metrics_is['pretax_income']
+            self.income_statement['metrics']['basic_eps'] = metrics_is['net_income'] / metrics_is['basic_average_shares']
+            self.income_statement['metrics']['diluted_eps'] = metrics_is['net_income'] / metrics_is['diluted_average_shares']
 
         if 'bs' in self.contained_statements:
             metrics_bs = self.balance_sheet['statement']
             self.balance_sheet['metrics'] = dict()
+
             self.balance_sheet['metrics']['current_ratio'] = metrics_bs['current_assets'] / metrics_bs['current_liabilities']
+            self.balance_sheet['metrics']['quick_ratio'] = (metrics_bs['current_assets'] - metrics_bs['inventory']) / metrics_bs['current_liabilities']
             self.balance_sheet['metrics']['debt_equity_ratio'] = metrics_bs['total_liabilities_net_minority_interest'] / metrics_bs['total_equity_gross_minority_interest']
+            self.balance_sheet['metrics']['working_capital'] = metrics_bs['current_assets'] - metrics_bs['current_liabilities']
 
         if 'cfs' in self.contained_statements:
             metrics_cfs = self.cash_flow['statement']
             self.cash_flow['metrics'] = dict()
+
             if 'bs' in self.contained_statements:
                 # NOTE: Need to take indices 1: of cash flow arrays, here
                 # Balance sheet doesn't have a value for ttm
@@ -227,10 +235,6 @@ class company():
         segment of companies. Individual company instances can then be
         contrasted with this segment instance.
 
-        TO DO: some statement items are calculated (EPS, for example). Can't
-        simply add them together. Need to recalculate with components from
-        self and other income statement.
-
         TO DO: need to work out balance sheet and cash flow additions.
 
         TO DO: need to get segment_dict entries into a new object and then
@@ -258,14 +262,15 @@ class company():
         }
 
         # Only attempt to add statements if both objects have the statement
-        if isinstance(self_statements['is'], dict) and isinstance(other_statements['is'], dict):
-            for key in other_statements['is']:
-                # Need to handle year in a special way
-                # For now, assume company year spans are equivalent
-                # Need to work out how to handle differing instance time frames
-                if key == 'year' and key in self_statements['is']:
-                    segment_dict['is'][key] = self_statements['is'][key]
-                elif key != 'year' and key in self_statements['is']:
-                    segment_dict['is'][key] = self_statements['is'][key] + other_statements['is'][key]
+        for sheet in self.contained_statements:
+            if isinstance(self_statements[sheet], dict) and isinstance(other_statements[sheet], dict):
+                for key in other_statements[sheet]:
+                    # Need to handle year in a special way
+                    # For now, assume company year spans are equivalent
+                    # Need to work out how to handle differing instance time frames
+                    if key == 'year' and key in self_statements[sheet]:
+                        segment_dict[sheet][key] = self_statements[sheet][key]
+                    elif key != 'year' and key in self_statements[sheet]:
+                        segment_dict[sheet][key] = self_statements[sheet][key] + other_statements[sheet][key]
 
         return segment_dict
