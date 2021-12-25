@@ -58,7 +58,7 @@ def import_statement(filepath):
     # Convert items to nparray if they're lists in the 'statement' key
     # These will always be lists of account amounts
     for key in data['statement'].keys():
-        if isinstance(data['statement'][key], list) and key != 'year':
-            data['statement'][key] = np.array([float(x) for x in data['statement'][key]])
+        if isinstance(data['statement'][key], list) and key not in ['year', 'year_adjusted']:
+            data['statement'][key] = np.array([float(x) if x != 'ttm' else x for x in data['statement'][key]])
 
     return data

@@ -73,6 +73,10 @@ class company():
             self.income_statement = import_statement(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
             self.balance_sheet = import_statement(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
             self.cash_flow = import_statement(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
+        else:
+            self.income_statement = dict()
+            self.balance_sheet = dict()
+            self.cash_flow = dict()
 
     def calculate_metrics(self):
         """
@@ -95,9 +99,11 @@ class company():
             self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
             self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
 
-            self.income_statement['metrics']['tax_rate'] = metrics_is['tax_provision'] / metrics_is['pretax_income']
-            self.income_statement['metrics']['basic_eps'] = metrics_is['net_income'] / metrics_is['basic_average_shares']
-            self.income_statement['metrics']['diluted_eps'] = metrics_is['net_income'] / metrics_is['diluted_average_shares']
+            # NOTE: Need to handle divide by zero, here, because items are 0 in ttm column (like basic average shares)
+            # Just return 0. In ttm column, shares and eps will both be 0. intuitive to understand that data missing.
+            self.income_statement['metrics']['tax_rate'] = np.divide(metrics_is['tax_provision'], metrics_is['pretax_income'], out = np.zeros_like(metrics_is['tax_provision']), where = metrics_is['pretax_income'] != 0)
+            self.income_statement['metrics']['basic_eps'] = np.divide(metrics_is['net_income'], metrics_is['basic_average_shares'], out = np.zeros_like(metrics_is['net_income']), where = metrics_is['basic_average_shares'] != 0)
+            self.income_statement['metrics']['diluted_eps'] = np.divide(metrics_is['net_income'], metrics_is['diluted_average_shares'], out = np.zeros_like(metrics_is['net_income']), where = metrics_is['diluted_average_shares'] != 0)
 
         if 'bs' in self.contained_statements:
             metrics_bs = self.balance_sheet['statement']
@@ -240,14 +246,6 @@ class company():
         TO DO: need to get segment_dict entries into a new object and then
         return the object rather than segment_dict.
         """
-        # Instantiate a dict that will hold combined statements.
-        segment_dict = dict()
-
-        # Instantiate empty entry in segment dict for each statement
-        segment_dict['is'] = dict()
-        segment_dict['bs'] = dict()
-        segment_dict['cfs'] = dict()
-
         # Figure out which statements each object has.
         self_statements = {
         'is':self.income_statement['statement'] if 'is' in self.contained_statements else 'Unavailable',
@@ -261,6 +259,20 @@ class company():
         'cfs':other.cash_flow['statement'] if 'cfs' in other.contained_statements else 'Unavailable'
         }
 
+        # Instantiate a dict that will hold combined statements.
+        segment_dict = dict()
+
+        # Instantiate empty entry in segment dict for each statement
+        # Ticker and company values in new object will be a list of companies in the new segment
+        # Make sure both ticker attributes are lists before attempting to combine them.
+        self_ticker = self.ticker if isinstance(self.ticker, list) else [self.ticker]
+        other_ticker = other.ticker if isinstance(other.ticker, list) else [other.ticker]
+        segment_tickers = self_ticker + other_ticker
+
+        segment_dict['is'] = dict(company = segment_tickers, groupings = dict(), statement = dict())
+        segment_dict['bs'] = dict(company = segment_tickers, groupings = dict(), statement = dict())
+        segment_dict['cfs'] = dict(company = segment_tickers, groupings = dict(), statement = dict())
+
         # Only attempt to add statements if both objects have the statement
         for sheet in self.contained_statements:
             if isinstance(self_statements[sheet], dict) and isinstance(other_statements[sheet], dict):
@@ -268,9 +280,19 @@ class company():
                     # Need to handle year in a special way
                     # For now, assume company year spans are equivalent
                     # Need to work out how to handle differing instance time frames
-                    if key == 'year' and key in self_statements[sheet]:
-                        segment_dict[sheet][key] = self_statements[sheet][key]
-                    elif key != 'year' and key in self_statements[sheet]:
-                        segment_dict[sheet][key] = self_statements[sheet][key] + other_statements[sheet][key]
+                    if key in ['year', 'year_adjusted'] and key in self_statements[sheet]:
+                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key]
+                    elif key not in ['year', 'year_adjusted'] and key in self_statements[sheet]:
+                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key] + other_statements[sheet][key]
 
-        return segment_dict
+        # instantiate new company object for the combined segment
+        segment = company(ticker_symbol = segment_tickers, method = None)
+        segment.ticker = segment_tickers
+
+        segment.income_statement = segment_dict['is']
+        segment.balance_sheet = segment_dict['bs']
+        segment.cash_flow = segment_dict['cfs']
+
+        segment.metrics_rows = self.metrics_rows
+
+        return segment
