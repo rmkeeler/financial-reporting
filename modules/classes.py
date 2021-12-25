@@ -93,6 +93,7 @@ class company():
 
             self.income_statement['metrics']['gross_margin'] = metrics_is['gross_profit'] / metrics_is['total_revenue']
             self.income_statement['metrics']['operating_margin'] = metrics_is['operating_income'] / metrics_is['total_revenue']
+            self.income_statement['metrics']['net_margin'] = metrics_is['net_income'] / metrics_is['total_revenue']
 
             self.income_statement['metrics']['cogs_percent'] = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
             self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
@@ -101,9 +102,15 @@ class company():
 
             # NOTE: Need to handle divide by zero, here, because items are 0 in ttm column (like basic average shares)
             # Just return 0. In ttm column, shares and eps will both be 0. intuitive to understand that data missing.
-            self.income_statement['metrics']['tax_rate'] = np.divide(metrics_is['tax_provision'], metrics_is['pretax_income'], out = np.zeros_like(metrics_is['tax_provision']), where = metrics_is['pretax_income'] != 0)
-            self.income_statement['metrics']['basic_eps'] = np.divide(metrics_is['net_income'], metrics_is['basic_average_shares'], out = np.zeros_like(metrics_is['net_income']), where = metrics_is['basic_average_shares'] != 0)
-            self.income_statement['metrics']['diluted_eps'] = np.divide(metrics_is['net_income'], metrics_is['diluted_average_shares'], out = np.zeros_like(metrics_is['net_income']), where = metrics_is['diluted_average_shares'] != 0)
+            self.income_statement['metrics']['tax_rate'] = np.divide(metrics_is['tax_provision'], metrics_is['pretax_income'],
+                                                                    out = np.zeros_like(metrics_is['tax_provision']),
+                                                                    where = metrics_is['pretax_income'] != 0)
+            self.income_statement['metrics']['basic_earnings_per_share'] = np.divide(metrics_is['net_income'], metrics_is['basic_average_shares'],
+                                                                    out = np.zeros_like(metrics_is['net_income']),
+                                                                    where = metrics_is['basic_average_shares'] != 0)
+            self.income_statement['metrics']['diluted_earnings_per_share'] = np.divide(metrics_is['net_income'], metrics_is['diluted_average_shares'],
+                                                                    out = np.zeros_like(metrics_is['net_income']),
+                                                                    where = metrics_is['diluted_average_shares'] != 0)
 
         if 'bs' in self.contained_statements:
             metrics_bs = self.balance_sheet['statement']
@@ -122,10 +129,13 @@ class company():
                 # NOTE: Need to take indices 1: of cash flow arrays, here
                 # Balance sheet doesn't have a value for ttm
                 # So its arrays will always be 1 shorter than is and cfs arrays
-                self.cash_flow['metrics']['operatingcf_ratio'] = metrics_cfs['operating_cash_flow'][1:] / metrics_bs['total_liabilities_net_minority_interest']
+                self.cash_flow['metrics']['operating_cf_ratio'] = np.divide(metrics_cfs['operating_cash_flow'][1:], metrics_bs['total_liabilities_net_minority_interest'])
+
             if 'is' in self.contained_statements:
-                # NOTE: basic average shares not reported for ttm, so need to take [1:] for both metrics in operatingcf_per_share
-                self.cash_flow['metrics']['operatingcf_per_share'] = metrics_cfs['operating_cash_flow'][1:] / metrics_is['basic_average_shares'][1:]
+                # NOTE: basic average shares not reported for ttm, so just fill this metric with 0 for that period
+                self.cash_flow['metrics']['operating_cf_per_share'] = np.divide(metrics_cfs['operating_cash_flow'], metrics_is['basic_average_shares'],
+                                                                            out = np.zeros_like(metrics_cfs['operating_cash_flow']),
+                                                                            where = metrics_is['basic_average_shares'] != 0)
 
     def save_statements(self, statements = None):
         """
@@ -150,12 +160,12 @@ class company():
 
         return None
 
-    def plot_metrics(self, statement, metrics, colors = ['darkblue','orange','lightblue','black','green']):
+    def plot_metrics(self, statements, metrics, colors = ['darkblue','orange','lightblue','black','green']):
         """
         Trends one or more metrics for the company to whom the object belongs.
 
         args:
-            statement: string. is, bs or cfs. the statement in the company object
+            statement: list. is, bs or cfs. the statement(s) in the company object
             from which to draw metrics for plotting.
 
             metrics: list of strings corresponding to keys in the ['statement']
@@ -170,18 +180,24 @@ class company():
         'cfs':self.cash_flow
         }
 
-        if statement not in statement_codes.keys():
-            raise ValueError('Invalid statement argument. Should be is, bs or cfs. You provided {}'.format(statement))
+        for statement in statements:
+            if statement not in statement_codes.keys():
+                raise ValueError('Invalid statement argument. Should include is, bs or cfs. You provided {}'.format(statement))
 
-        statement = statement_codes[statement]
+        statement_group = dict(company = self.ticker, statement = dict(), metrics = dict())
+
+        for statement in statements:
+            statement_group['statement'].update(statement_codes[statement]['statement'])
+            if 'metrics' in statement_codes[statement].keys():
+                statement_group['metrics'].update(statement_codes[statement]['metrics'])
 
         data = []
-        x_var = statement['statement']['year_adjusted'][::-1]
+        x_var = statement_group['statement']['year_adjusted'][::-1]
         for i, metric in enumerate(metrics):
-            for key in statement.keys():
-                if key != 'company' and metric in statement[key].keys():
+            for key in statement_group.keys():
+                if key != 'company' and metric in statement_group[key].keys():
                     metric_location = key
-                    metric_vals = statement[metric_location][metric]
+                    metric_vals = statement_group[metric_location][metric]
 
             plot = go.Scatter(
                 mode = 'lines+markers',
@@ -194,8 +210,14 @@ class company():
 
             data.append(plot)
 
+        # Check metrics list to see which metrics are included
+        # If we're looking at per_unit metrics like EPS, we should format
+        # Y ticks as numeric. Protects such metrics from percent formatting.
+        # If below returns a value > 0, we're looking at per_unit metrics
+        per_unit_test = sum([True for x in metrics if '_per_' in x])
+
         layout = dict(
-            title = 'Contrasting Metrics for {}'.format(statement['company']),
+            title = 'Contrasting Metrics for {}'.format(statement_group['company']),
             plot_bgcolor = 'white',
             height = 400,
             width = 600,
@@ -207,11 +229,12 @@ class company():
                 linecolor = 'black'
             ),
             yaxis = dict(
-                title = 'US Dollars (MM)' if metric_location == 'statement' else 'Ratio USD',
+                title = 'US Dollars (B)' if metric_location == 'statement' else 'Ratio USD',
                 showgrid = False,
                 showline = True,
                 linecolor = 'black',
-                tickformat = ',.0%' if metric_location == 'metrics' else ','
+                tickformat = ',.0' if metric_location == 'statement' else ',.0' if per_unit_test > 0 else ',.0%',
+                rangemode = 'tozero'
             )
         )
 
@@ -278,10 +301,11 @@ class company():
             if isinstance(self_statements[sheet], dict) and isinstance(other_statements[sheet], dict):
                 for key in other_statements[sheet]:
                     # Need to handle year in a special way
-                    # For now, assume company year spans are equivalent
-                    # Need to work out how to handle differing instance time frames
-                    if key in ['year', 'year_adjusted'] and key in self_statements[sheet]:
-                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key]
+                    # Only keep years in segment_dict that exist in both component dicts
+                    # This avoids the hassle of wondering how many components are
+                    # rep'd in each year during analyses
+                    if key in ['year_adjusted'] and key in self_statements[sheet]:
+                        segment_dict[sheet]['statement'][key] = [x for x in self_statements[sheet][key] if x in other_statements[sheet][key]]
                     elif key not in ['year', 'year_adjusted'] and key in self_statements[sheet]:
                         segment_dict[sheet]['statement'][key] = self_statements[sheet][key] + other_statements[sheet][key]
 

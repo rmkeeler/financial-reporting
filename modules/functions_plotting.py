@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
+import re
 
 def adjust_date(date_string, relativemonths = 1, direction = -1):
     """
@@ -82,7 +83,7 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         data.append(plot)
 
     layout = dict(
-        title = 'Contrasting {}'.format(metric),
+        title = 'Contrasting {}'.format(re.sub('_',' ',metric).upper()),
         plot_bgcolor = 'white',
         height = 400,
         width = 600,
@@ -94,11 +95,11 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
             linecolor = 'black'
             ),
         yaxis = dict(
-            title = metric + ' USD (MM)' if metric_location == 'statement' else 'Ratio USD',
+            title = metric + ' USD (B)' if metric_location == 'statement' else 'Ratio USD',
             showgrid = False,
             showline = True,
             linecolor = 'black',
-            tickformat = ',' if metric_location == 'statement' else ',.0%',
+            tickformat = ',' if metric_location == 'statement' else ',.0' if '_per_' in metric else ',.0%',
             rangemode = 'tozero'
             )
     )
