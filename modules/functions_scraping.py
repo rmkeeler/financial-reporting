@@ -77,7 +77,7 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    #options.add_argument('--headless')
+    options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
     options.add_argument('--incognito')
     options.add_argument('--log-level=3')
@@ -188,7 +188,9 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_row
     # Take all statement dates back 6 months to avoid problems like
     # A 1/31 report date being considered current year when it describes previous year
     # 6 months just seems reasonable. July is when a report date can be considered current year
-    statement_dict['year_adjusted'] = [adjust_date(x, 6) if x != 'ttm' else x for x in statement_dict['year']]
+    adjusted_years = [adjust_date(x, 6) if x != 'ttm' else x for x in statement_dict['year']]
+    # The line below converts "ttm" to the most recent year (max of all years in set + 1)
+    statement_dict['year_adjusted'] = [x if x != 'ttm' else str(int(max([x for x in adjusted_years if x != 'ttm'])) + 1) for x in adjusted_years]
 
     ## STEP 2.PREAMBLE: Establish the mode number of columns in the income statement
     # We'll use this to weed out subheader rows that have been expanded (subheader rows will show more columns than mode value)
