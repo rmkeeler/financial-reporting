@@ -52,6 +52,8 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         companies is greater than list of colors. default allows for up to
         4 segments. 4 companies to be plotted.
 
+        TO DO: auto-adjust chart x axis (year_adjusted) for years common to all companies provided
+
     returns: Plotly fig.
     """
     data = []

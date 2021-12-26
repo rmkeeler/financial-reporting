@@ -248,8 +248,9 @@ class company():
         display the object's metadata.
         """
 
-        header = '|||{} Object Metadata|||\n'.format(self.ticker)
-        data = [['Statements Available', '{}'.format(self.contained_statements)]]
+        header = '|||Object Metadata|||\n'.format(self.ticker)
+        data = [['Companies Included', '{}'.format(', '.join(self.ticker))],
+                ['Statements Available', '{}'.format(', '.join(self.contained_statements))]]
 
         return header + str(pd.DataFrame(data = [x[1] for x in data], index = [x[0] for x in data], columns = ['']))
 
@@ -299,6 +300,14 @@ class company():
         # Only attempt to add statements if both objects have the statement
         for sheet in self.contained_statements:
             if isinstance(self_statements[sheet], dict) and isinstance(other_statements[sheet], dict):
+                # Get indices of years in each object that are common to the other object
+                # These will be used to filter statement and metrics rows, later
+                # To make sure that the whole resulting object only describes years common to both instances.
+                years_self = self_statements[sheet]['year_adjusted']
+                years_other = other_statements[sheet]['year_adjusted']
+
+                common_years_self = [years_self.index(x) for x in years_self if x in years_other]
+                common_years_other = [years_other.index(x) for x in years_other if x in years_self]
                 for key in other_statements[sheet]:
                     # Need to handle year in a special way
                     # Only keep years in segment_dict that exist in both component dicts
@@ -307,7 +316,9 @@ class company():
                     if key in ['year_adjusted'] and key in self_statements[sheet]:
                         segment_dict[sheet]['statement'][key] = [x for x in self_statements[sheet][key] if x in other_statements[sheet][key]]
                     elif key not in ['year', 'year_adjusted'] and key in self_statements[sheet]:
-                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key] + other_statements[sheet][key]
+                        # indexing for common_years_self and other_years_self makes sure
+                        # values in statement rows align with years in year_adjusted
+                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key][common_years_self] + other_statements[sheet][key][common_years_other]
 
         # instantiate new company object for the combined segment
         segment = company(ticker_symbol = segment_tickers, method = None)
