@@ -15,7 +15,7 @@ from definitions import OUTPUT_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
-from modules.functions_scraping import scrape_statement
+from modules.functions_scraping import scrape_statement, get_recent_quarter, rewrite_value
 from modules.functions_files import save_statement, import_statement
 from modules.functions_plotting import adjust_date
 
@@ -61,9 +61,9 @@ class company():
                                 'cfs' : []}
 
         # FINANCIAL STATEMENTS
-        self.income_statement_url = 'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol)
-        self.balance_sheet_url = 'https://finance.yahoo.com/quote/{}/balance-sheet'.format(ticker_symbol)
-        self.cash_flow_url = 'https://finance.yahoo.com/quote/{}/cash-flow'.format(ticker_symbol)
+        self.statement_urls = {'is':'https://finance.yahoo.com/quote/{}/financials'.format(ticker_symbol),
+                                'bs':'https://finance.yahoo.com/quote/{}/balance-sheet'.format(ticker_symbol),
+                                'cfs':'https://finance.yahoo.com/quote/{}/cash-flow'.format(ticker_symbol)}
 
         if method == 'scrape':
             self.income_statement = scrape_statement(ticker_symbol, 'is', skip_rows = self.metrics_rows) if 'is' in initial_statements else dict()
@@ -136,6 +136,43 @@ class company():
                 self.cash_flow['metrics']['operating_cf_per_share'] = np.divide(metrics_cfs['operating_cash_flow'], metrics_is['basic_average_shares'],
                                                                             out = np.zeros_like(metrics_cfs['operating_cash_flow']),
                                                                             where = metrics_is['basic_average_shares'] != 0)
+
+    def fill_ttm(self, statement, ttm_row):
+        """
+        Some rows in financial statements are unpopulated in ttm period.
+        Basic Average Shares is one of them.
+        For some analyses, it's useful and practical to use the value from the
+        most recent completed quarter.
+
+        This method does that. Gets most recent completed quarter from Yahoo Finance
+        and fills the ttm column in the row specified by fill_row.
+
+        args:
+            statement: is, bs or cfs. Which statement to check and to fill.
+            fill_row: string. Name of row as it appears on Yahoo Finance. Case sensitive.
+
+        returns: None
+
+        TO DO: get_recent_quarter() works too fast, collects recent year before
+        report can reorient after clicking the "quarterly" button. need a way
+        for this function to wait for quarterly values to try and scrape them.
+        """
+        statement_attributes = {'is':self.income_statement['statement'],
+                                'bs':self.balance_sheet['statement'],
+                                'cfs':self.cash_flow['statement']}
+        statement_url = self.statement_urls[statement]
+        recent_quarter, row_name = get_recent_quarter(statement_url, ttm_row)
+        print('Recent Quarter: {}\nRow Name: {}'.format(recent_quarter, row_name))
+
+        # Figure out which index in the provided statement is ttm
+        # Return that index, so we can replace the correct index
+        # in fill_row with recent_quarter
+        ttm_index = statement_attributes[statement]['year'].index('ttm')
+        print('ttm_index: {}'.format(ttm_index))
+
+        statement_attributes[statement] = rewrite_value(statement_attributes[statement],row_name,[ttm_index],[recent_quarter])
+
+        return statement_attributes[statement][row_name]
 
     def save_statements(self, statements = None):
         """

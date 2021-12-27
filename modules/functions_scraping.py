@@ -16,6 +16,24 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
 # DEFINE FUNCTIONS
+def rewrite_value(statement, row_name, indices, values):
+    """
+    Helper function of fill_ttm() method of company() class.
+
+    args:
+        statement: financial statement dictionary like company.income_statement['statement']
+        row_name: name of a financial statement row as appears on yahoo finance (case sensitive)
+        indices: numeric values array-like of the index of the value to replace in the statement row
+        value: the values (array-like) to fill at the given index in the given row_name in the statement
+
+    returns: new_statement, revised statement dict with value filled at row_name.
+    Can be used as a direct replacement for company.statement['statement'].
+    """
+    new_statement = statement
+    np.put(new_statement[row_name], indices, values)
+
+    return new_statement
+
 def clean_numeric(text, frmat = float):
     """
     Text numbers in text format. Cleans out characters that make conversion to int or float impossible.
@@ -228,6 +246,46 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_row
     dictified_statement = dict(company = ticker_symbol, groupings = dict(), statement = statement_dict)
 
     return dictified_statement
+
+def get_recent_quarter(statement_url, fill_row):
+    """
+    Some rows in financial statements are unpopulated in ttm period.
+    Basic Average Shares is one of them.
+    For some analyses, it's useful and practical to use the value from the
+    most recent completed quarter.
+
+    This is a helper function of the fill_ttm() method of company() class.
+
+    This function does that. Gets most recent completed quarter from Yahoo Finance
+    and fills the ttm column in the row specified by fill_row.
+
+    args:
+        statement_url: url of page to scrape.
+        fill_row: string. name of row as it appears on Yahoo Finance. Case sensitive.
+
+    returns: value at recent quarter of fill_row.
+    """
+    driver = create_webdriver()
+    print('Requesting {}...'.format(statement_url))
+    driver.get(statement_url)
+
+    quarter_button = driver.find_element(By.XPATH, '//button[contains(.,"Quarterly")]')
+    quarter_button.click()
+    # pause 1 second to allow the click operation to complete, turning
+    # the statement table into the quarterly version
+    sleep(1)
+
+    soup = BeautifulSoup(driver.page_source, 'lxml')
+    row = soup.find('div',{'title':fill_row}).parent.parent.findChildren('div')
+
+    row_val = None
+    for r in row:
+        if row_val == None:
+            row_val = r.text if re.search('^[0-9]', r.text) else None
+
+    statement_row = clean_statement_heading(fill_row)
+
+    return clean_numeric(row_val), statement_row
 
 def scrape_statement(ticker, statement, skip_rows):
     """
