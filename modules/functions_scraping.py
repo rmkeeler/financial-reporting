@@ -269,6 +269,13 @@ def get_recent_quarter(statement_url, fill_row):
     print('Requesting {}...'.format(statement_url))
     driver.get(statement_url)
 
+    while len(driver.find_elements(By.XPATH, '//button[contains(.,"Quarterly")]')) == 0:
+        # building in a second of pause to let the page load before attempting the click
+        # assumption is that statement will always have at least one expandable row in it
+        # if no expandable rows visible, assume page hasn't loaded
+        sleep(1)
+    sleep(1) # pause an extra second, because this is still failing to work
+
     quarter_button = driver.find_element(By.XPATH, '//button[contains(.,"Quarterly")]')
     quarter_button.click()
     # pause 1 second to allow the click operation to complete, turning

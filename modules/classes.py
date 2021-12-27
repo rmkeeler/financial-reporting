@@ -152,10 +152,6 @@ class company():
             fill_row: string. Name of row as it appears on Yahoo Finance. Case sensitive.
 
         returns: None
-
-        TO DO: get_recent_quarter() works too fast, collects recent year before
-        report can reorient after clicking the "quarterly" button. need a way
-        for this function to wait for quarterly values to try and scrape them.
         """
         statement_attributes = {'is':self.income_statement['statement'],
                                 'bs':self.balance_sheet['statement'],
