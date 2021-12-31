@@ -51,6 +51,17 @@ def clean_numeric(text, frmat = float):
 
     return frmat(clean_text)
 
+def unclean_statement_heading(heading):
+    """
+    Undoes what happens in clean_statement_heading() in this module.
+
+    Separate with spaces and all caps.
+    """
+
+    new_heading = re.sub('_',' ',heading).upper()
+
+    return new_heading
+
 def clean_statement_heading(heading):
     """
     Helper function of dictify_statement(). Cleans out normal garbage from

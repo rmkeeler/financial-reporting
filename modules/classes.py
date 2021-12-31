@@ -15,7 +15,7 @@ from definitions import OUTPUT_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
-from modules.functions_scraping import scrape_statement, get_recent_quarter, rewrite_value
+from modules.functions_scraping import scrape_statement, get_recent_quarter, rewrite_value, unclean_statement_heading
 from modules.functions_files import save_statement, import_statement
 from modules.functions_plotting import adjust_date
 
@@ -245,8 +245,10 @@ class company():
 
             data.append(plot)
 
+        pretty_metrics = [unclean_statement_heading(x) for x in metrics]
+
         layout = dict(
-            title = 'Contrasting Metrics for {}'.format(statement_group['company']),
+            title = 'Contrasting {} for {}'.format(', '.join(pretty_metrics), statement_group['company']),
             plot_bgcolor = 'white',
             height = 400,
             width = 600,
