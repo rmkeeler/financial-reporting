@@ -95,6 +95,8 @@ class company():
             self.income_statement['metrics']['operating_margin'] = metrics_is['operating_income'] / metrics_is['total_revenue']
             self.income_statement['metrics']['net_margin'] = metrics_is['net_income'] / metrics_is['total_revenue']
 
+            self.income_statement['metrics']['profit_ratio'] = metrics_is['net_income'] / metrics_is['operating_income']
+
             self.income_statement['metrics']['cogs_percent'] = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
             self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
             self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
@@ -243,12 +245,6 @@ class company():
 
             data.append(plot)
 
-        # Check metrics list to see which metrics are included
-        # If we're looking at per_unit metrics like EPS, we should format
-        # Y ticks as numeric. Protects such metrics from percent formatting.
-        # If below returns a value > 0, we're looking at per_unit metrics
-        per_unit_test = sum([True for x in metrics if '_per_' in x])
-
         layout = dict(
             title = 'Contrasting Metrics for {}'.format(statement_group['company']),
             plot_bgcolor = 'white',
@@ -266,7 +262,7 @@ class company():
                 showgrid = False,
                 showline = True,
                 linecolor = 'black',
-                tickformat = ',.0' if metric_location == 'statement' else ',.0' if per_unit_test > 0 else ',.0%',
+                tickformat = ',.2',
                 rangemode = 'tozero'
             )
         )

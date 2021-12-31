@@ -101,7 +101,7 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
             showgrid = False,
             showline = True,
             linecolor = 'black',
-            tickformat = ',' if metric_location == 'statement' else ',.0' if '_per_' in metric else ',.0%',
+            tickformat = ',.2',
             rangemode = 'tozero'
             )
     )
