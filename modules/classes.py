@@ -15,9 +15,9 @@ from definitions import OUTPUT_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
-from modules.functions_scraping import scrape_statement, get_recent_quarter, rewrite_value, unclean_statement_heading
-from modules.functions_files import save_statement, import_statement
-from modules.functions_plotting import adjust_date
+from modules.scraping import scrape_statement, get_recent_quarter
+from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date
+from modules.files import save_statement, import_statement
 
 import numpy as np
 import pandas as pd
@@ -98,8 +98,16 @@ class company():
             self.income_statement['metrics']['profit_ratio'] = metrics_is['net_income'] / metrics_is['operating_income']
 
             self.income_statement['metrics']['cogs_percent'] = metrics_is['cost_of_revenue'] / metrics_is['total_revenue']
-            self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
-            self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
+
+            try:
+                self.income_statement['metrics']['sga_percent'] = metrics_is['selling_general_and_administrative'] / metrics_is['total_revenue']
+            except:
+                self.income_statement['metrics']['sga_percent'] = np.zeros_like(metrics_is['total_revenue'])
+
+            try:
+                self.income_statement['metrics']['rnd_percent'] = metrics_is['research_and_development'] / metrics_is['total_revenue']
+            except:
+                self.income_statement['metrics']['rnd_percent'] = np.zeros_like(metrics_is['total_revenue'])
             self.income_statement['metrics']['opex_percent'] = metrics_is['operating_expense'] / metrics_is['total_revenue']
 
             # NOTE: Need to handle divide by zero, here, because items are 0 in ttm column (like basic average shares)
@@ -250,8 +258,8 @@ class company():
         layout = dict(
             title = 'Contrasting {} for {}'.format(', '.join(pretty_metrics), statement_group['company']),
             plot_bgcolor = 'white',
-            height = 400,
-            width = 600,
+            height = 700,
+            width = 1050,
             hovermode = 'x unified',
             xaxis = dict(
                 title = 'Year',

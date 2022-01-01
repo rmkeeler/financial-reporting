@@ -1,35 +1,7 @@
 import plotly.graph_objects as go
+from modules.cleaning import unclean_statement_heading
 import numpy as np
-from datetime import datetime as dt
-from dateutil.relativedelta import relativedelta
 import re
-
-def adjust_date(date_string, relativemonths = 1, direction = -1):
-    """
-    Helper function of plot_companies() in this module.
-    Not all companies publish financial statements on 12/31.
-    Some do so on 1/31.
-
-    Effectively, 12/31 peformance and 1/31 performance line up.
-    At least as far as trending is concerned.
-
-    To make company metrics more plottable, this function adjusts all dates
-    in statement['statement']['year'] back one month, then extracts the year and
-    converts to text. This tends to line up everyone's reporting periods.
-
-    args:
-        date_string: string in format %m/%d/%Y (1/31/2020, for example).
-        relativemonths: number of months to add or subtract from a date.
-        direction: 1 for add, -1 for subtract
-
-    returns:
-        adjusted year: String of year after adjustment is made to the date.
-    """
-    date = dt.strptime(date_string, '%m/%d/%Y')
-    newdate = date + (direction * relativedelta(months = relativemonths))
-    adjusted_year = str(newdate.year)
-
-    return adjusted_year
 
 def plot_companies(companies_statements, metric, colors = ['blue','orange','green','red']):
     """
@@ -56,6 +28,17 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
 
     returns: Plotly fig.
     """
+    ## WORK IN PROGRESS:
+    # Instantiating a statement_codes dict
+    # Eventually will allow a user to provide a list of company objects
+    # Rather than a list of company.statement objects
+    # Better usability and ability to plot metrics from multiple statements
+    statement_codes = {
+    'is':None,
+    'bs':None,
+    'cfs':None
+    }
+
     data = []
     # Identify and gather metric from the company statement dict
     for i, co in enumerate(companies_statements):
@@ -85,10 +68,10 @@ def plot_companies(companies_statements, metric, colors = ['blue','orange','gree
         data.append(plot)
 
     layout = dict(
-        title = 'Contrasting {}'.format(re.sub('_',' ',metric).upper()),
+        title = 'Contrasting {}'.format(unclean_statement_heading(metric)),
         plot_bgcolor = 'white',
-        height = 400,
-        width = 600,
+        height = 700,
+        width = 1050,
         hovermode = 'x unified',
         xaxis = dict(
             title = 'Year',

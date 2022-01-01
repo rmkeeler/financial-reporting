@@ -1,29 +1,6 @@
 import json
 import numpy as np
-
-def get_dictkey(val, dictlike):
-    """
-    Takes a value expected to appear in a given dictionary.
-
-    Returns that value's key.
-    """
-    for key, value in dictlike.items():
-        if value == val:
-            return key
-        else:
-            print('val not found...')
-
-def listify_nparrays(nparray):
-    """
-    Pass this to json.dump() as the default function for data it can't handle.
-    Numpy arrays are non-serializable in JSON, so json.dumps() is failing
-    when I try to save financial statement attributes.
-
-    Checks the object passed to it to see if it's a np array. If it is, it
-    converts the np array to a python list.
-    """
-    if isinstance(nparray, np.ndarray):
-        return nparray.tolist()
+from modules.cleaning import get_dictkey, listify_nparrays
 
 def save_statement(dictlike, filepath):
     """

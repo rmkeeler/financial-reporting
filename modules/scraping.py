@@ -1,5 +1,5 @@
 from definitions import WEBDRIVER_PATH
-from modules.functions_plotting import adjust_date
+from modules.cleaning import rewrite_value, clean_numeric, clean_statement_heading, unclean_statement_heading, adjust_date
 from time import sleep
 
 # Analysis packages
@@ -16,61 +16,6 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
 # DEFINE FUNCTIONS
-def rewrite_value(statement, row_name, indices, values):
-    """
-    Helper function of fill_ttm() method of company() class.
-
-    args:
-        statement: financial statement dictionary like company.income_statement['statement']
-        row_name: name of a financial statement row as appears on yahoo finance (case sensitive)
-        indices: numeric values array-like of the index of the value to replace in the statement row
-        value: the values (array-like) to fill at the given index in the given row_name in the statement
-
-    returns: new_statement, revised statement dict with value filled at row_name.
-    Can be used as a direct replacement for company.statement['statement'].
-    """
-    new_statement = statement
-    np.put(new_statement[row_name], indices, values)
-
-    return new_statement
-
-def clean_numeric(text, frmat = float):
-    """
-    Text numbers in text format. Cleans out characters that make conversion to int or float impossible.
-
-    Returns the values in chosen frmat function (i.e. int or float)
-    """
-    clean_text = text
-
-    # Define replacements
-    rep = {',':'',
-          '^\-$':'0'}
-
-    for found, replaced in rep.items():
-        clean_text = re.sub(found, replaced, clean_text)
-
-    return frmat(clean_text)
-
-def unclean_statement_heading(heading):
-    """
-    Undoes what happens in clean_statement_heading() in this module.
-
-    Separate with spaces and all caps.
-    """
-
-    new_heading = re.sub('_',' ',heading).upper()
-
-    return new_heading
-
-def clean_statement_heading(heading):
-    """
-    Helper function of dictify_statement(). Cleans out normal garbage from
-    table heading strings.
-    """
-    clean_heading = re.sub(' ','_',heading).replace('&','and').lower()
-
-    return clean_heading
-
 def extract_row_name(row_text):
     """
     Method I'm using to grab yahoo finance statement rows produces at one point
