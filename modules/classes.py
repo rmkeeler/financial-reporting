@@ -224,7 +224,7 @@ class company():
 
         return None
 
-    def plot_metrics(self, metrics, colors = ['darkblue','orange','lightblue','black','green']):
+    def plot(self, metrics, colors = ['darkblue','orange','lightblue','black','green']):
         """
         Trends one or more metrics for the company to whom the object belongs.
 
