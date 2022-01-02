@@ -10,15 +10,14 @@ It automatically calculates ratios insightful for financial statement analysis.
 Further analysis can be done on the object's attributes.
 """
 
-from definitions import WEBDRIVER_PATH
-from definitions import OUTPUT_PATH
+from definitions import WEBDRIVER_PATH, OUTPUT_PATH, ASSET_PATH
 import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
 from modules.scraping import scrape_statement, get_recent_quarter
 from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date
 from modules.forex import trend_mean_rates
-from modules.files import save_json, import_statement_json
+from modules.files import save_json, import_statement_json, import_json
 
 import numpy as np
 import pandas as pd
@@ -181,24 +180,40 @@ class company():
 
         return self.statements[statement][row_name]
 
-    def convert_currency(self, conversion_array):
+    def convert_currency(self, currency_a, currency_b):
         """
         When financial statements are in a non-US currency, this method
         converts all statements using a conversion table supplied by the
         developer using this package.
+
+        NOTE: CURRENCY JSON MUST EXIST IN ASSETS FOLDER OF THIS PROJECT'S
+        DIRECTORY. Generate such json files with modules.forex.trend_mean_rates()
+        and then modules.files.save_json().
 
         args:
             conversion_array: a 2D numpy array. Shape is years x conversion rate.
             Example: [['2019', 1.5], ['2020', 1.4], ['2021', 1.6]].
             To be matched against ['year_adjusted'] index of financial statements.
         """
+        forex_file = ASSET_PATH + currency_a.lower() + '_to_' + currency_b.lower() + '.json'
+        forex_rates = import_json(forex_file)
         # STEP 1: Find years in company ['year_adjusted']
+        for statement in self.statements.keys():
+            statement_dict = self.statements[statement]['statement']
+            years = statement_dict['year_adjusted']
 
-        # STEP 2: Take [:,1] from conversion array, filtered for years in ['year_adjusted']
+            # STEP 2: Filter forex dict for years in year_adjusted
+            filtered_forex = {k:v for (k,v) in forex_rates.items() if k in years}
+            # Need to flip forex_factors, because statements store years in reverse order
+            # While currency mapping json stores years in chron order
+            forex_factors = np.flip(np.asarray(list(filtered_forex.values())))
 
-        # STEP 3: Multiply each row of statement from array created in step 2
+            # STEP 3: Multiply each row of statement from array created in step 2
+            for row in statement_dict.keys():
+                if isinstance(statement_dict[row], np.ndarray):
+                    statement_dict[row] = np.rint(statement_dict[row] * forex_factors)
 
-        return None
+        return filtered_forex
 
     def quick_gather(self, ticker):
         """
