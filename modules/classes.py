@@ -129,7 +129,10 @@ class company():
             statement['metrics'] = dict()
 
             statement['metrics']['current_ratio'] = metrics_bs['current_assets'] / metrics_bs['current_liabilities']
-            statement['metrics']['quick_ratio'] = (metrics_bs['current_assets'] - metrics_bs['inventory']) / metrics_bs['current_liabilities']
+            try:
+                statement['metrics']['quick_ratio'] = (metrics_bs['current_assets'] - metrics_bs['inventory']) / metrics_bs['current_liabilities']
+            except:
+                statement['metrics']['quick_ratio'] = np.zeros_like(metrics_bs['year_adjusted'])
             statement['metrics']['debt_equity_ratio'] = metrics_bs['total_liabilities_net_minority_interest'] / metrics_bs['total_equity_gross_minority_interest']
             statement['metrics']['working_capital'] = metrics_bs['current_assets'] - metrics_bs['current_liabilities']
 
