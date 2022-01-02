@@ -43,7 +43,7 @@ def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
             print('{} not found in statement. Double check the statement objects in companies argument.'.format(metric))
 
         x_var = co.statements[metric_statement]['statement']['year_adjusted']
-        co_name = co.statements[metric_statement]['company'] if isinstance(co.statements[metric_statement]['company'], str) else ' + '.join(company.statements[metric_statement]['company'])
+        co_name = co.statements[metric_statement]['company'] if isinstance(co.statements[metric_statement]['company'], str) else ' + '.join(co.statements[metric_statement]['company'])
 
         plot = go.Scatter(
             mode = 'lines+markers',
