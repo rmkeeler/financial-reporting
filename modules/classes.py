@@ -17,7 +17,8 @@ sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
 from modules.scraping import scrape_statement, get_recent_quarter
 from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date
-from modules.files import save_statement, import_statement
+from modules.forex import trend_mean_rates
+from modules.files import save_json, import_statement_json
 
 import numpy as np
 import pandas as pd
@@ -72,9 +73,9 @@ class company():
             self.statements['bs'] = scrape_statement(ticker_symbol, 'bs', skip_rows = self.metrics_rows) if 'bs' in initial_statements else dict()
             self.statements['cfs'] = scrape_statement(ticker_symbol, 'cfs', skip_rows = self.metrics_rows) if 'cfs' in initial_statements else dict()
         elif method == 'import':
-            self.statements['is'] = import_statement(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
-            self.statements['bs'] = import_statement(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
-            self.statements['cfs'] = import_statement(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
+            self.statements['is'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
+            self.statements['bs'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
+            self.statements['cfs'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
         else:
             self.statements = dict()
 
@@ -191,15 +192,25 @@ class company():
             Example: [['2019', 1.5], ['2020', 1.4], ['2021', 1.6]].
             To be matched against ['year_adjusted'] index of financial statements.
         """
+        # STEP 1: Find years in company ['year_adjusted']
+
+        # STEP 2: Take [:,1] from conversion array, filtered for years in ['year_adjusted']
+
+        # STEP 3: Multiply each row of statement from array created in step 2
+
         return None
 
     def quick_gather(self, ticker):
         """
         Convenience method that scrapes Yahoo Finance for statements for ticker
         company and then saves them with save_statements() in one line.
+
+        Returns the populated company object after gathering.
         """
         co = company(ticker, method = 'scrape')
         co.save_statements()
+
+        return co
 
     def save_statements(self, statements = None):
         """
@@ -212,15 +223,15 @@ class company():
         print('Statements to be saved: {}'.format(statements))
         if 'is' in statements:
             filename = OUTPUT_PATH + self.ticker + '_is.json'
-            save_statement(self.statements['is'], filename)
+            save_json(self.statements['is'], filename)
 
         if 'bs' in statements:
             filename = OUTPUT_PATH + self.ticker + '_bs.json'
-            save_statement(self.statements['bs'], filename)
+            save_json(self.statements['bs'], filename)
 
         if 'cfs' in statements:
             filename = OUTPUT_PATH + self.ticker + '_cfs.json'
-            save_statement(self.statements['cfs'], filename)
+            save_json(self.statements['cfs'], filename)
 
         return None
 

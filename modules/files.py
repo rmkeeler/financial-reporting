@@ -2,7 +2,7 @@ import json
 import numpy as np
 from modules.cleaning import get_dictkey, listify_nparrays
 
-def save_statement(dictlike, filepath):
+def save_json(dictlike, filepath):
     """
     Take a dictionary (ideally the dict created by scrape_statement or import_statement)
     and save it to a json file.
@@ -18,9 +18,12 @@ def save_statement(dictlike, filepath):
 
     return None
 
-def import_statement(filepath):
+def import_statement_json(filepath):
     """
     Opens .json file at filepath and loads it into a python dictionary.
+
+    Special instance of import_json() below that does some necessary data
+    formatting particular to financial statement JSON objects.
 
     Converts lists in 'statement' key to nparray so that the company instance
     can function just like it does after scraping.
@@ -37,5 +40,15 @@ def import_statement(filepath):
     for key in data['statement'].keys():
         if isinstance(data['statement'][key], list) and key not in ['year', 'year_adjusted']:
             data['statement'][key] = np.array([float(x) if x != 'ttm' else x for x in data['statement'][key]])
+
+    return data
+
+def import_json(filepath):
+    """
+    Generic function for importing a JSON object from a JSON file on disk.
+    """
+    # Load in json
+    with open(filepath) as f:
+        data = json.load(f)
 
     return data
