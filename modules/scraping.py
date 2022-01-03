@@ -1,4 +1,10 @@
 from definitions import WEBDRIVER_PATH
+
+try:
+    from config import CHROME_SETTINGS_PATH # User needs to create config.py for their self
+except:
+    CHROME_SETTINGS_PATH = False
+
 from modules.cleaning import rewrite_value, clean_numeric, clean_statement_heading, unclean_statement_heading, adjust_date
 from time import sleep
 
@@ -51,10 +57,12 @@ def create_webdriver():
     options = webdriver.ChromeOptions()
 
     # Specify driver options
-    options.add_argument('--headless')
+    #options.add_argument('--headless')
     options.add_argument('--ignore_certificate_errors')
-    options.add_argument('--incognito')
+    #options.add_argument('--incognito')
     options.add_argument('--log-level=3')
+    if CHROME_SETTINGS_PATH:
+        options.add_argument('--user-data-dir='+CHROME_SETTINGS_PATH)
 
     # Instantiate driver service
     service = Service(WEBDRIVER_PATH + driver_name)
@@ -113,7 +121,7 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name):
     desired_levels = {
     'is':2,
     'bs':3,
-    'cfs':2
+    'cfs':3
     }
 
     # Throw an error when statement name is invalid to call out the reason
@@ -157,7 +165,9 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_row
 
     ## STEP 1: Get the years column before doing anything else. Requires special process.
     # We take indices [2:], because first two columns are the row name ("breakdown") and a blank column for formatting
-    statement_dict['year'] = np.array([x.text for x in statement_heading[2:]])
+    # Return a list rather than a np array, because no math will be done with this row
+    # And saving/importing the JSON will naturally try and turn this into a list
+    statement_dict['year'] = [x.text for x in statement_heading[2:]]
     # Create a default adjusted year field in each statement
     # Take all statement dates back 6 months to avoid problems like
     # A 1/31 report date being considered current year when it describes previous year
