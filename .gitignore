@@ -2,3 +2,4 @@ env
 .ipynb_checkpoints
 modules/__pycache__
 config.py
+output
