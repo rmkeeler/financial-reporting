@@ -1,4 +1,6 @@
 from forex_python.converter import CurrencyRates
+from definitions import ASSET_PATH
+from modules.files import save_json
 import numpy as np
 from datetime import datetime, timedelta
 
@@ -28,7 +30,7 @@ def get_conversion_rates(currency_a, currency_b, year, granularity = 15):
 
     return rate_list
 
-def trend_mean_rates(currency_a, currency_b, first_year, last_year):
+def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save = False):
     """
     Get a dictionary mapping years to mean conversion rate from a to b in those years.
 
@@ -37,11 +39,20 @@ def trend_mean_rates(currency_a, currency_b, first_year, last_year):
 
     currencies are strings.
 
+    Optionally saves the resulting json object to this project's assets folder.
+
     years are ints.
     """
+    # Correct any first_date < 2000. forex-python doesn't go back further than that.
+    assert first_year >= 2000, 'ERROR: forex-python package only has forex rates back to 2000. Choose a year that is at least 2000.'
+    
     trend_dict = dict()
     for year in range(first_year, last_year + 1):
         mean_rate = get_conversion_rates(currency_a, currency_b, year).mean()
         trend_dict[year] = mean_rate
+
+    if save:
+        filename = currency_a.lower() + '_to_' + currency_b.lower() + '.json'
+        save_json(trend_dict, ASSET_PATH + filename)
 
     return trend_dict

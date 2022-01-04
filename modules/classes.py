@@ -204,6 +204,10 @@ class company():
         for statement in self.statements.keys():
             statement_dict = self.statements[statement]['statement']
             years = statement_dict['year_adjusted']
+            # Find indices of years that are also in forex_rates keys
+            # We'll filter statement rows for these indices to make sure
+            # Forex multiplier array aligns with statement row arrays
+            years_forex_mask = [i for i, x in enumerate(years) if x in forex_rates.keys()]
 
             # STEP 2: Filter forex dict for years in year_adjusted
             filtered_forex = {k:v for (k,v) in forex_rates.items() if k in years}
@@ -213,8 +217,12 @@ class company():
 
             # STEP 3: Multiply each row of statement from array created in step 2
             for row in statement_dict.keys():
+                # Filter row for only the indices matching year_adjusted in forex_factors
                 if isinstance(statement_dict[row], np.ndarray):
+                    statement_dict[row] = statement_dict[row][years_forex_mask]
                     statement_dict[row] = np.rint(statement_dict[row] * forex_factors)
+                elif isinstance(statement_dict[row], list):
+                    statement_dict[row] = [x for i, x in enumerate(statement_dict[row]) if i in years_forex_mask]
 
         return filtered_forex
 
