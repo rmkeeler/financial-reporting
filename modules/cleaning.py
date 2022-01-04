@@ -113,3 +113,42 @@ def listify_nparrays(nparray):
     """
     if isinstance(nparray, np.ndarray):
         return nparray.tolist()
+
+def align_arrays(reference_a, reference_b, subject_array_b):
+    """
+    Common problem in this project is statements or companies with different
+    numbers of years of data.
+
+    Common solution is to align both entities (statements, companies) to the one
+    with the fewest years available.
+
+    This means figuring out which years they have in common and then filtering
+    row np arrays for indices that coincide with the indices of the shared years
+    in common.
+
+    args:
+        reference_a, b: lists (usually year_adjusted is used). These list-likes
+        are contrasted to find the values in common and the indices of those
+        values in reference_b.
+
+        subject_array_b: This array will be filtered for the indices returned
+        from reference_b that represent values also contained in refrence_a.
+
+    example:
+        reference_a is balance sheet years from 1985-2020.
+        reference_b is cash flow years from 1989-2021.
+        subject_array_b is operating_cash_flow array in cash flow statement
+        Filter subject_array_b for the indices in reference_b that correspond
+        to the years 1989-2020.
+
+        To apply this function, iterate through statement rows (subject_array_b)
+        in a statement, then do it again to the other statement.
+    """
+    mask = [i for i, x in enumerate(reference_b) if x in reference_a]
+
+    if isinstance(subject_array_b, list):
+        aligned_subject = [x for i, x in enumerate(reference_b) if i in mask]
+    elif isinstance(subject_array_b, np.ndarray):
+        aligned_subject = subject_array_b[mask]
+
+    return aligned_subject

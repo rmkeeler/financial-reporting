@@ -15,7 +15,7 @@ import sys
 sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
 from modules.scraping import scrape_statement, get_recent_quarter
-from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date
+from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date, align_arrays
 from modules.forex import trend_mean_rates
 from modules.files import save_json, import_statement_json, import_json
 
@@ -78,6 +78,38 @@ class company():
         else:
             self.statements = dict()
 
+    def align_statements(self):
+        """
+        In some cases, several statements in a single company object can have assymmetrical
+        time frames. This method remedies that, filtering all statements in an
+        object for years common to them all.
+
+        This is designed to enable calculate_metrics(), as that method will fail
+        for metrics calculated across assymmetrical statements.
+
+        Example: Intel's Cash Flow Statement and Balance Sheet contain different
+        time frames. Cash Flow starts at 1989, while Balance Sheet starts at 1985.
+        """
+        # STEP 1: Figure out which statements are in this object
+        statements = {k:v['statement'] for k, v in self.statements.items() if 'statement' in v.keys()}
+
+        # STEP 2: Figure out which years all included statements have in common
+        common_years = list(statements.values())[0]['year_adjusted']
+        for statement in statements.values():
+            common_years = list(set(common_years) & set(statement['year_adjusted']))
+            common_years.sort(reverse = True)
+
+        # STEP 3: Run align_arrays() on all statements in statements
+        for k, v in statements.items():
+            statement_years = v['year_adjusted']
+            for row in v:
+                v[row] = align_arrays(common_years, statement_years, v[row])
+                # STEP 4: Replace the ['statement'] values in each statement in self.statements
+                # with the statement in statements dict from step 3
+                self.statements[k]['statement'] = statements[k]
+
+        return statements
+
     def calculate_metrics(self):
         """
         Simply refreshes the metrics stored in the company object's 'metrics' index.
@@ -87,6 +119,10 @@ class company():
         attributes, and this method will allow the object to recalculate its metrics
         after each addition or other update.
         """
+        # First, align statements to make sure all the math works
+        # Also removes the need to make sure we call this every time we run calcs
+        self.align_statements()
+
         if 'is' in self.statements.keys():
             statement = self.statements['is']
             metrics_is = statement['statement']
@@ -142,10 +178,9 @@ class company():
             statement['metrics'] = dict()
 
             if 'bs' in self.statements.keys():
-                # NOTE: Need to take indices 1: of cash flow arrays, here
-                # Balance sheet doesn't have a value for ttm
-                # So its arrays will always be 1 shorter than is and cfs arrays
-                statement['metrics']['operating_cf_ratio'] = np.divide(metrics_cfs['operating_cash_flow'][1:], metrics_bs['total_liabilities_net_minority_interest'])
+                # because we call align_statements() at the beginning of this method,
+                # we don't need to do anything to make sure arrays are same size
+                statement['metrics']['operating_cf_ratio'] = np.divide(metrics_cfs['operating_cash_flow'], metrics_bs['total_liabilities_net_minority_interest'])
 
             if 'is' in self.statements.keys():
                 # NOTE: basic average shares not reported for ttm, so just fill this metric with 0 for that period
@@ -203,26 +238,23 @@ class company():
         # STEP 1: Find years in company ['year_adjusted']
         for statement in self.statements.keys():
             statement_dict = self.statements[statement]['statement']
-            years = statement_dict['year_adjusted']
-            # Find indices of years that are also in forex_rates keys
-            # We'll filter statement rows for these indices to make sure
-            # Forex multiplier array aligns with statement row arrays
-            years_forex_mask = [i for i, x in enumerate(years) if x in forex_rates.keys()]
 
-            # STEP 2: Filter forex dict for years in year_adjusted
-            filtered_forex = {k:v for (k,v) in forex_rates.items() if k in years}
+            statement_years = statement_dict['year_adjusted']
+            forex_years = forex_rates.keys()
+
+            # STEP 1: Filter forex dict for years in year_adjusted
+            filtered_forex = {k:v for (k,v) in forex_rates.items() if k in statement_years}
+
             # Need to flip forex_factors, because statements store years in reverse order
             # While currency mapping json stores years in chron order
             forex_factors = np.flip(np.asarray(list(filtered_forex.values())))
 
-            # STEP 3: Multiply each row of statement from array created in step 2
+            # STEP 2: Multiply each row of statement from array created in step 2
             for row in statement_dict.keys():
                 # Filter row for only the indices matching year_adjusted in forex_factors
+                statement_dict[row] = align_arrays(forex_years, statement_years, statement_dict[row])
                 if isinstance(statement_dict[row], np.ndarray):
-                    statement_dict[row] = statement_dict[row][years_forex_mask]
                     statement_dict[row] = np.rint(statement_dict[row] * forex_factors)
-                elif isinstance(statement_dict[row], list):
-                    statement_dict[row] = [x for i, x in enumerate(statement_dict[row]) if i in years_forex_mask]
 
         return filtered_forex
 
