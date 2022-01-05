@@ -16,7 +16,7 @@ sys.path.append(WEBDRIVER_PATH) # Selenium breaks if not add to path
 
 from modules.scraping import scrape_statement, get_recent_quarter
 from modules.cleaning import unclean_statement_heading, rewrite_value, adjust_date, align_arrays
-from modules.forex import trend_mean_rates
+from modules.forex import trend_mean_rates, get_cpiu
 from modules.files import save_json, import_statement_json, import_json
 
 import numpy as np
@@ -257,6 +257,47 @@ class company():
                     statement_dict[row] = np.rint(statement_dict[row] * forex_factors)
 
         return filtered_forex
+
+    def normalize_statements(self, origin_currency = 'USD'):
+        """
+        Values in Yahoo Finance statements are reported in nominal currency.
+
+        This method converts all values to real values, inflating all years up
+        to the most recent year in the financial statement.
+
+        Because CPI package only works in USD, convert_currency() will be run
+        when an origin_currency value other than 'USD' is provided.
+        """
+        # If origin_currency is not USD, convert to USD from origin_currency
+        # consumer price index is inflation measure based on US prices
+        # Imperfect way to do this, but for basic decision making, we can
+        # pretend foreign companies are US-based.
+        # Foreign currency inflation relative to USD is captured in forex, so
+        # this does make international contrasts more insightful
+        if origin_currency != 'USD':
+            self.convert_currency(origin_currency, 'USD')
+
+        # Figure out which statements are in here
+        statements = {k:v['statement'] for k, v in self.statements.items() if 'statement' in v.keys()}
+        # Get consumer price index (CPI-U) lookup dict
+        cpiu = get_cpiu()
+        # Iterate through statements
+        for k, v in statements.items():
+            # Find max year
+            max_year = max(v['year_adjusted'])
+            all_years = v['year_adjusted']
+            cpiu_factors = np.asarray([1 + ((cpiu[max_year] - cpiu[x]) / cpiu[x]) for x in all_years])
+            # Get a np array of cpiu factors ((max - current) / current)
+            # Iterate through rows
+            for i, row in v.items():
+                if isinstance(row, np.ndarray):
+                    # Adjust whole row with cpiu_factors
+                    v[i] = v[i] * cpiu_factors
+
+            # Replace statements.[statement]['statement'] with statement
+            self.statements[k]['statement'] = statements[k]
+
+        return None
 
     def quick_gather(self, ticker):
         """

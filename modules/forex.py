@@ -1,8 +1,14 @@
 from forex_python.converter import CurrencyRates
 from definitions import ASSET_PATH
 from modules.files import save_json
+
 import numpy as np
+
 from datetime import datetime, timedelta
+
+import requests as r
+
+import csv
 
 def get_conversion_rates(currency_a, currency_b, year, granularity = 15):
     """
@@ -45,7 +51,7 @@ def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save 
     """
     # Correct any first_date < 2000. forex-python doesn't go back further than that.
     assert first_year >= 2000, 'ERROR: forex-python package only has forex rates back to 2000. Choose a year that is at least 2000.'
-    
+
     trend_dict = dict()
     for year in range(first_year, last_year + 1):
         mean_rate = get_conversion_rates(currency_a, currency_b, year).mean()
@@ -56,3 +62,34 @@ def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save 
         save_json(trend_dict, ASSET_PATH + filename)
 
     return trend_dict
+
+def get_cpiu():
+    """
+    Gets raw data from the bureau of labor statistics (BLS).
+
+    Traces consumer price index (CPI) for all urban consumers (-U) since 1947.
+
+    BLS recommends this as the basis of inflation adjustmentsj, so this
+    is intended as a helper function to normalize_statements() method of
+    the company() class.
+    """
+    bls_url = 'https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems'
+    response = r.get(bls_url)
+    data = response.text.splitlines()
+
+    dataset = []
+    reader = csv.reader(data, delimiter = '\t')
+    for line in reader:
+        dataset.append([x.strip() for x in line])
+    # Filter dataset for "all items" (SA0) and January (M01)
+    # All items is the big bucket of consumer items. The super CPI-U
+    # Good benchmark to apply to all industries
+    # Just take January, because simpler and just as useful as getting an average
+    # Need a single CPI-U value for each year
+    dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[2] == 'M01']
+
+    cpiu = dict()
+    for row in dataset_filtered:
+        cpiu[row[1]] = float(row[3])
+
+    return cpiu
