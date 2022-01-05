@@ -458,19 +458,19 @@ class company():
                 years_self = self_statements[sheet]['year_adjusted']
                 years_other = other_statements[sheet]['year_adjusted']
 
-                common_years_self = [years_self.index(x) for x in years_self if x in years_other]
-                common_years_other = [years_other.index(x) for x in years_other if x in years_self]
                 for key in other_statements[sheet]:
                     # Need to handle year in a special way
                     # Only keep years in segment_dict that exist in both component dicts
                     # This avoids the hassle of wondering how many components are
                     # rep'd in each year during analyses
                     if key in ['year_adjusted'] and key in self_statements[sheet]:
-                        segment_dict[sheet]['statement'][key] = [x for x in self_statements[sheet][key] if x in other_statements[sheet][key]]
+                        segment_dict[sheet]['statement'][key] = align_arrays(years_other, years_self, self_statements[sheet][key])
                     elif key not in ['year', 'year_adjusted'] and key in self_statements[sheet]:
                         # indexing for common_years_self and other_years_self makes sure
                         # values in statement rows align with years in year_adjusted
-                        segment_dict[sheet]['statement'][key] = self_statements[sheet][key][common_years_self] + other_statements[sheet][key][common_years_other]
+                        self_aligned = align_arrays(years_other, years_self, self_statements[sheet][key])
+                        other_aligned = align_arrays(years_self, years_other, other_statements[sheet][key])
+                        segment_dict[sheet]['statement'][key] = self_aligned + other_aligned
 
         # instantiate new company object for the combined segment
         segment = company(ticker_symbol = segment_tickers, method = None)
