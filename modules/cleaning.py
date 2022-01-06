@@ -119,8 +119,8 @@ def align_arrays(reference_a, reference_b, subject_array_b):
     Common problem in this project is statements or companies with different
     numbers of years of data.
 
-    Common solution is to align both entities (statements, companies) to the one
-    with the fewest years available.
+    Common solution is to align both entities (statements, companies) to one another's
+    common years
 
     This means figuring out which years they have in common and then filtering
     row np arrays for indices that coincide with the indices of the shared years
