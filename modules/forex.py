@@ -86,13 +86,7 @@ def get_cpiu(year = 0, item = 'CUSR0000SA0'):
     """
     # Keeping both URLs in here. Developer can change value in .get() below as needed.
     bls_url = 'https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems'
-    response = r.get(bls_url)
-    data = response.text.splitlines()
-
-    dataset = []
-    reader = csv.reader(data, delimiter = '\t')
-    for line in reader:
-        dataset.append([x.strip() for x in line])
+    dataset = parse_bls_report(bls_url)
     # Filter dataset for "all items" (SA0) and January (M01)
     # All items is the big bucket of consumer items. The super CPI-U
     # Good benchmark to apply to all industries
