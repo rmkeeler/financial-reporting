@@ -3,13 +3,46 @@ from definitions import ASSET_PATH
 from modules.files import save_json
 from datetime import datetime
 
+from bs4 import BeautifulSoup
+import requests as r
+
 import numpy as np
 
 from datetime import datetime, timedelta
 
-import requests as r
-
 import csv
+
+def scrape_conversion_rates(currency_a, currency_b, save = False):
+    """
+    Alternative to get_conversion_rates(). get calls forex-python api. It's quick,
+    but it only goes back to 2000.
+
+    This method scrapes a history table on fxtop.com and goes back to 1953.
+    This method can be used to maintain 40-year analysis time frames in
+    non-USD financial statements.
+    """
+    url = 'https://fxtop.com/en/historical-exchange-rates.php?A=1&C1={}&C2={}&YA=1&DD1=&MM1=&YYYY1=&B=1&P=&I=1&DD2=07&MM2=01&YYYY2=2022&btnOK=Go!'.format(currency_a.upper(), currency_b.upper())
+
+    print('Getting webpage...')
+    response = r.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    print('Done! parsing dom...')
+    # forex table is nested two tables down. but it's only table with border of 1
+    forex_table = soup.find('table', {'border':1}).find_all('tr')[1:] # skip the header row
+
+    conversion_rates = dict()
+    for row in forex_table:
+        year = int(row.find_all('td')[0].text)
+        value = float(row.find_all('td')[1].text)
+        conversion_rates[year] = value
+
+    if save:
+        filename = currency_a.lower() + '_to_' + currency_b.lower() + '.json'
+        save_json(conversion_rates, ASSET_PATH + filename)
+
+        print('Saving to {}'.format(ASSET_PATH + filename))
+
+    return conversion_rates
 
 def get_conversion_rates(currency_a, currency_b, year, granularity = 15):
     """
@@ -39,6 +72,10 @@ def get_conversion_rates(currency_a, currency_b, year, granularity = 15):
 
 def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save = False):
     """
+    NOTE: Effectively deprecated in favor of scrape_conversion_rates(), which is
+    much faster. Leaving this function in here, because the scraping method will be
+    outdated one day when fxtop.com change their DOMs. This will work in a pinch.
+
     Get a dictionary mapping years to mean conversion rate from a to b in those years.
 
     np.asarray(list(dict.values())) can be used to get a multiplier array. This array

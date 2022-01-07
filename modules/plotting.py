@@ -3,7 +3,7 @@ from modules.cleaning import unclean_statement_heading
 import numpy as np
 import re
 
-def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
+def plot_companies(companies, metric, colors = ['blue','orange','green','red'], currency = '[Unspecified Currency]'):
     """
     Takes a list of company statements (dicts from company class) and a string
     that corresponds to an item in the dictionaries to plot.
@@ -70,11 +70,11 @@ def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
             linecolor = 'black'
             ),
         yaxis = dict(
-            title = metric + ' USD (B)' if metric_location == 'statement' else 'Ratio USD',
+            title = metric + ' ' + currency + ' (B)' if metric_location == 'statement' else currency + ' USD',
             showgrid = False,
             showline = True,
             linecolor = 'black',
-            tickformat = ',.2',
+            tickformat = ',.6',
             rangemode = 'tozero'
             )
     )

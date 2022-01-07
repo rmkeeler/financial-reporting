@@ -49,6 +49,7 @@ class company():
         initial_statements = [] if ticker_symbol == None else initial_statements
 
         self.ticker = ticker_symbol
+        self.currency = '[Unspecified Currency]'
 
         # point out rows in gathered statements that are calculations rather
         # than simply reported measurements.
@@ -256,6 +257,8 @@ class company():
                 if isinstance(statement_dict[row], np.ndarray):
                     statement_dict[row] = np.rint(statement_dict[row] * forex_factors)
 
+        self.currency = currency_b
+
         return filtered_forex
 
     def normalize_statements(self, reference_year = 0, origin_currency = 'USD'):
@@ -401,11 +404,11 @@ class company():
                 linecolor = 'black'
             ),
             yaxis = dict(
-                title = 'US Dollars (B)' if metric_location == 'statement' else 'Ratio USD',
+                title = self.currency + ' (B)' if metric_location == 'statement' else 'Ratio ' + self.currency,
                 showgrid = False,
                 showline = True,
                 linecolor = 'black',
-                tickformat = ',.2',
+                tickformat = ',.6',
                 rangemode = 'tozero'
             )
         )
