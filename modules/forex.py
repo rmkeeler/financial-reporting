@@ -1,6 +1,7 @@
 from forex_python.converter import CurrencyRates
 from definitions import ASSET_PATH
 from modules.files import save_json
+from datetime import datetime
 
 import numpy as np
 
@@ -63,7 +64,7 @@ def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save 
 
     return trend_dict
 
-def get_cpiu():
+def get_cpiu(year = 0):
     """
     Gets raw data from the bureau of labor statistics (BLS).
 
@@ -72,6 +73,9 @@ def get_cpiu():
     BLS recommends this as the basis of inflation adjustmentsj, so this
     is intended as a helper function to normalize_statements() method of
     the company() class.
+
+    If a year is provided, get monthly CPI-U values for that year. Turns
+    this function into a helper function of get_infation_rate() to follow.
     """
     bls_url = 'https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems'
     response = r.get(bls_url)
@@ -86,10 +90,34 @@ def get_cpiu():
     # Good benchmark to apply to all industries
     # Just take January, because simpler and just as useful as getting an average
     # Need a single CPI-U value for each year
-    dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[2] == 'M01']
-
-    cpiu = dict()
-    for row in dataset_filtered:
-        cpiu[row[1]] = float(row[3])
+    if year:
+        dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[1] == str(year) and x[2].startswith('M')]
+        cpiu = dict()
+        for row in dataset_filtered:
+            cpiu[row[1] + row[2]] = float(row[3])
+    else:
+        dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[2] == 'M01']
+        cpiu = dict()
+        for row in dataset_filtered:
+            cpiu[row[1]] = float(row[3])
 
     return cpiu
+
+def get_inflation(year = datetime.today().year):
+    """
+    Get inflation rate for a year.
+
+    Default is current year.
+
+    Uses get_cpiu() to get provided year's monthly CPI-U values.
+    Inflation rate is percent difference between earliest recorded month and
+    latest recorded month.
+    """
+    cpiu = get_cpiu(year = year)
+    
+    latest = cpiu[max(cpiu.keys())]
+    earliest = cpiu[min(cpiu.keys())]
+
+    inflation_rate = (latest - earliest) / earliest
+
+    return inflation_rate

@@ -258,7 +258,7 @@ class company():
 
         return filtered_forex
 
-    def normalize_statements(self, origin_currency = 'USD'):
+    def normalize_statements(self, reference_year = 0, origin_currency = 'USD'):
         """
         Values in Yahoo Finance statements are reported in nominal currency.
 
@@ -267,6 +267,21 @@ class company():
 
         Because CPI package only works in USD, convert_currency() will be run
         when an origin_currency value other than 'USD' is provided.
+
+        args:
+            reference_year: default is max year in statement's adjusted_year field.
+            Effect is inflating all years up to the current year's dollar value.
+            Otherwise, an int year will adjust all values to the year specified,
+            as long as that year is actually counted in the statements analyzed.
+
+            origin_currency: default assumes the statement's currency is USD. No
+            forex transformations will be performed on the statements before normalizing.
+            String currency code will run convert_currency() method to convert from
+            the specified currency to USD before normalizing for inflation. This
+            conversion is necessary, because CPI-U is measured on US goods and
+            therefore isn't a very insightful measure of inflation in other countries.
+            Forex transformation analytically accounts for non-US inflation by tracking
+            differences in conversion rate year to year between USD and other currency.
         """
         # If origin_currency is not USD, convert to USD from origin_currency
         # consumer price index is inflation measure based on US prices
@@ -284,9 +299,9 @@ class company():
         # Iterate through statements
         for k, v in statements.items():
             # Find max year
-            max_year = max(v['year_adjusted'])
+            ref_year = str(reference_year) if reference_year and (str(reference_year) in v['year_adjusted']) else max(v['year_adjusted'])
             all_years = v['year_adjusted']
-            cpiu_factors = np.asarray([1 + ((cpiu[max_year] - cpiu[x]) / cpiu[x]) for x in all_years])
+            cpiu_factors = np.asarray([1 + ((cpiu[ref_year] - cpiu[x]) / cpiu[x]) for x in all_years])
             # Get a np array of cpiu factors ((max - current) / current)
             # Iterate through rows
             for i, row in v.items():
