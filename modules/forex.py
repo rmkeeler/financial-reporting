@@ -64,7 +64,7 @@ def trend_mean_rates(currency_a, currency_b, last_year, first_year = 2000, save 
 
     return trend_dict
 
-def get_cpiu(year = 0):
+def get_cpiu(year = 0, item = 'CUSR0000SA0'):
     """
     Gets raw data from the bureau of labor statistics (BLS).
 
@@ -76,7 +76,15 @@ def get_cpiu(year = 0):
 
     If a year is provided, get monthly CPI-U values for that year. Turns
     this function into a helper function of get_infation_rate() to follow.
+
+    NOTE: Item is broken. Don't change it outside the default. Need to gather
+    several reports from bureau of labor stats and build a lookup dict from them.
+    Dict item suffix = report url. ('SA0':allitemsurl). This function can then
+    gather the correct report based on the item suffix provided in the item arg.
+
+    CUSR0000SA0 is CPI-U for all items, '0000' part means US city average.
     """
+    # Keeping both URLs in here. Developer can change value in .get() below as needed.
     bls_url = 'https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems'
     response = r.get(bls_url)
     data = response.text.splitlines()
@@ -91,19 +99,55 @@ def get_cpiu(year = 0):
     # Just take January, because simpler and just as useful as getting an average
     # Need a single CPI-U value for each year
     if year:
-        dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[1] == str(year) and x[2].startswith('M')]
+        dataset_filtered = [x for x in dataset if x[0] == item and x[1] == str(year) and x[2].startswith('M')]
         cpiu = dict()
         for row in dataset_filtered:
             cpiu[row[1] + row[2]] = float(row[3])
     else:
-        dataset_filtered = [x for x in dataset if x[0].endswith('SA0') and x[2] == 'M01']
+        dataset_filtered = [x for x in dataset if x[0] == item and x[2] == 'M01']
         cpiu = dict()
         for row in dataset_filtered:
             cpiu[row[1]] = float(row[3])
 
     return cpiu
 
-def get_inflation(year = datetime.today().year):
+def parse_bls_report(report_url):
+    """
+    Helper function that takes reports at bureau of labor stats site (CPI-U)
+    and converts them to a list of rows from the dataset.
+    """
+    response = r.get(report_url)
+    data = response.text.splitlines()
+
+    dataset = []
+    reader = csv.reader(data, delimiter = '\t')
+    for line in reader:
+        dataset.append([x.strip() for x in line])
+
+    return dataset
+
+def get_cpiu_items():
+    """
+    Gets a dict of all CPI-U items measured by the US Bureau of Labor Stats.
+
+    Each item is a different "shopping cart" of goods. Use the item most relevant
+    to a company's industry in order to track inflation against its financial
+    statement values.
+
+    This dict is meant to be a way to lookup values to feed into get_cpiu() or
+    get_inflation() as the item argument.
+    """
+    bls_url = 'https://download.bls.gov/pub/time.series/cu/cu.item'
+
+    data = parse_bls_report(bls_url)
+
+    cpiu_items = dict()
+    for row in data[1:]: # skip first row of column names
+        cpiu_items[row[0]] = row[1]
+
+    return cpiu_items
+
+def get_inflation(year = datetime.today().year, item = 'CUSR0000SA0'):
     """
     Get inflation rate for a year.
 
@@ -112,12 +156,49 @@ def get_inflation(year = datetime.today().year):
     Uses get_cpiu() to get provided year's monthly CPI-U values.
     Inflation rate is percent difference between earliest recorded month and
     latest recorded month.
+
+    NOTE: Item is broken. Don't change it outside the default. Need to gather
+    several reports from bureau of labor stats and build a lookup dict from them.
+    Dict item suffix = report url. ('SA0':allitemsurl). This function can then
+    gather the correct report based on the item suffix provided in the item arg.
     """
-    cpiu = get_cpiu(year = year)
-    
+    cpiu = get_cpiu(year = year, item = item)
+
     latest = cpiu[max(cpiu.keys())]
     earliest = cpiu[min(cpiu.keys())]
 
     inflation_rate = (latest - earliest) / earliest
 
     return inflation_rate
+
+def get_cpiu_sources():
+    """
+    Visit several known bureau of labor stats reports and gather the item codes
+    in them. Map those codes to the report URLs so that get_inflation() and
+    get_cpiu() can use the resulting dict as a lookup source before collecting
+    their data.
+    """
+    # STEP 1: Define list of report URLs
+    report_urls = [
+    'https://download.bls.gov/pub/time.series/cu/cu.data.11.USFoodBeverage',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.12.USHousing',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.13.USApparel',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.14.USTransportation',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.15.USMedical',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.16.USRecreation',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.17.USEducationAndCommunication',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.18.USOtherGoodsAndServices',
+    'https://download.bls.gov/pub/time.series/cu/cu.data.20.USCommoditiesServicesSpecial'
+    ]
+
+    # STEP 2: Iterate through report URLs, getting data from each
+    cpiu_sources = dict()
+    for url in report_urls:
+        data = parse_bls_report(url)
+        # STEP 3: get first item in each row (the item code).
+        for row in data:
+            item = row[0]
+            # STEP 4: Append dict[item_code] = report_url
+            cpiu_sources[item] = url
+
+    return cpiu_sources
