@@ -32,14 +32,18 @@ def clean_numeric(text, frmat = float):
 
     Returns the values in chosen frmat function (i.e. int or float)
     """
-    clean_text = text
+    replaced_text = text
+    thousands = 1 if text.endswith('k') else 0
 
     # Define replacements
     rep = {',':'',
-          '^\-$':'0'}
+          '^\-$':'0',
+          '[A-Za-z]':''}
 
     for found, replaced in rep.items():
-        clean_text = re.sub(found, replaced, clean_text)
+        replaced_text = re.sub(found, replaced, replaced_text)
+
+    clean_text = str(float(replaced_text) * 1000) if thousands else replaced_text
 
     return frmat(clean_text)
 
