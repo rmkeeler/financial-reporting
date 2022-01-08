@@ -22,17 +22,24 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
 # DEFINE FUNCTIONS
-def get_statement_currency(ticker_symbol):
+def get_statement_currency(ticker_symbol, webdriver = 0):
     """
     Request a company's income statement from Yahoo finance and parse the page
     to find the reporting currency. This can be a helper function, or it can be
     called when working with a class to fill in self.currency on the fly.
+
+    args:
+        webdriver: selenium webdriver instance. if left 0, this function will create one.
+        ticker_symbol. all-caps ticker symbol of company to look up.
     """
     url = 'https://finance.yahoo.com/quote/{}/{}'.format(ticker_symbol,'financials')
-    driver = create_webdriver()
-    driver.get(url)
+    # Give user the option to provide a previously created/custom webdriver
+    if not webdriver:
+        webdriver = create_webdriver()
 
-    soup = BeautifulSoup(driver.page_source, 'lxml')
+    webdriver.get(url)
+
+    soup = BeautifulSoup(webdriver.page_source, 'lxml')
     currency = soup(text = re.compile('^Currency in*'))[0].split(' ')[2].replace('.','')
 
     return currency
@@ -134,11 +141,10 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name, get_currency = 
     if get_currency: # optionally get currency symbol to populate company.currency.
         soup = BeautifulSoup(webdriver.page_source, 'lxml')
         currency = soup(text = re.compile('^Currency in.*'))[0].split(' ')[2].replace('.','')
-        print(currency)
     else:
         currency = '[Unspecified Currency]'
 
-    # Expand the OpEx row on the page, if getting income statement
+    # Specify how many levels to expand on each statement.
     desired_levels = {
     'is':2,
     'bs':3,
