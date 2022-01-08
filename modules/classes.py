@@ -70,10 +70,11 @@ class company():
 
         if method == 'scrape':
             for x in initial_statements:
-                self.statements[x], self.currency = scrape_statement(ticker_symbol, x, skip_rows = self.metrics_rows, get_currency = 1)
+                self.statements[x] = scrape_statement(ticker_symbol, x, skip_rows = self.metrics_rows)
         elif method == 'import':
             for x in initial_statements:
                 self.statements[x] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_' + x + '.json')
+                self.currency = self.statements[x]['currency']
         else:
             self.statements = dict()
 
@@ -336,17 +337,10 @@ class company():
             statements = self.statements.keys()
 
         print('Statements to be saved: {}'.format(statements))
-        if 'is' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_is.json'
-            save_json(self.statements['is'], filename)
-
-        if 'bs' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_bs.json'
-            save_json(self.statements['bs'], filename)
-
-        if 'cfs' in statements:
-            filename = OUTPUT_PATH + self.ticker + '_cfs.json'
-            save_json(self.statements['cfs'], filename)
+        for statement in statements:
+            self.statements[statement]['currency'] = self.currency
+            filename = OUTPUT_PATH + self.ticker + '_' + statement + '.json'
+            save_json(self.statements[statement], filename)
 
         return None
 

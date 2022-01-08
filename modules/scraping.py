@@ -22,28 +22,6 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
 # DEFINE FUNCTIONS
-def get_statement_currency(ticker_symbol, webdriver = 0):
-    """
-    Request a company's income statement from Yahoo finance and parse the page
-    to find the reporting currency. This can be a helper function, or it can be
-    called when working with a class to fill in self.currency on the fly.
-
-    args:
-        webdriver: selenium webdriver instance. if left 0, this function will create one.
-        ticker_symbol. all-caps ticker symbol of company to look up.
-    """
-    url = 'https://finance.yahoo.com/quote/{}/{}'.format(ticker_symbol,'financials')
-    # Give user the option to provide a previously created/custom webdriver
-    if not webdriver:
-        webdriver = create_webdriver()
-
-    webdriver.get(url)
-
-    soup = BeautifulSoup(webdriver.page_source, 'lxml')
-    currency = soup(text = re.compile('^Currency in*'))[0].split(' ')[2].replace('.','')
-
-    return currency
-
 def extract_row_name(row_text):
     """
     Method I'm using to grab yahoo finance statement rows produces at one point
@@ -117,7 +95,7 @@ def expand_statement_rows(webdriver, levels = 1):
 
     return statement_rows, soup
 
-def get_statement_rows(webdriver, ticker_symbol, statement_name, get_currency = 0):
+def get_statement_rows(webdriver, ticker_symbol, statement_name):
     """
     Get income statement for company = ticker_symbol from yahoo finance.
 
@@ -138,11 +116,6 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name, get_currency = 
     url = 'https://finance.yahoo.com/quote/{}/{}'.format(ticker_symbol,statement_pages[statement_name])
     # Open the page in webdriver
     webdriver.get(url)
-    if get_currency: # optionally get currency symbol to populate company.currency.
-        soup = BeautifulSoup(webdriver.page_source, 'lxml')
-        currency = soup(text = re.compile('^Currency in.*'))[0].split(' ')[2].replace('.','')
-    else:
-        currency = '[Unspecified Currency]'
 
     # Specify how many levels to expand on each statement.
     desired_levels = {
@@ -169,7 +142,7 @@ def get_statement_rows(webdriver, ticker_symbol, statement_name, get_currency = 
     statement_heading = soup.find('div',{'class':'D(tbhg)'}).select_one('div:first-child').find_all('div')
 
     # Prevent user from having to populate a dummy currency variable, every time
-    return statement_heading, statement_rows, currency
+    return statement_heading, statement_rows
 
 
 def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_rows = None):
@@ -235,7 +208,7 @@ def dictify_statement(statement_heading, statement_rows, ticker_symbol, skip_row
                 if rowname not in [clean_statement_heading(x) for x in skip_vals]:
                     statement_dict[rowname] = rowvals
 
-    dictified_statement = dict(company = ticker_symbol, groupings = dict(), statement = statement_dict)
+    dictified_statement = dict(company = ticker_symbol, statement = statement_dict)
 
     return dictified_statement
 
@@ -286,7 +259,7 @@ def get_recent_quarter(statement_url, fill_row):
 
     return clean_numeric(row_val), statement_row
 
-def scrape_statement(ticker, statement, skip_rows, get_currency = 0):
+def scrape_statement(ticker, statement, skip_rows):
     """
     Run all necessary functions above to get an income statement dict at once.
 
@@ -294,7 +267,7 @@ def scrape_statement(ticker, statement, skip_rows, get_currency = 0):
     """
     print('Getting {} statement for {}...'.format(statement, ticker))
     driver = create_webdriver()
-    statement_heading, statement_rows, currency = get_statement_rows(driver, ticker, statement, get_currency)
+    statement_heading, statement_rows = get_statement_rows(driver, ticker, statement)
     statement_dict = dictify_statement(statement_heading, statement_rows, ticker, skip_rows)
     print('\n')
     return statement_dict, currency

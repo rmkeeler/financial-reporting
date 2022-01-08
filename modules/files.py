@@ -1,6 +1,8 @@
 import json
 import numpy as np
 from modules.cleaning import get_dictkey, listify_nparrays
+import os
+from definitions import OUTPUT_PATH
 
 def save_json(dictlike, filepath):
     """
@@ -51,3 +53,24 @@ def import_statement_json(filepath):
             data['statement'][key] = np.array([float(x) if x != 'ttm' else x for x in data['statement'][key]])
 
     return data
+
+def get_available_tickers():
+    """
+    Return a list of tickers and statements saved to the output directory.
+
+    Intended to be used to remind one's self which companies have been stored so far.
+
+    Or to make it easy to iterate through saved statements to update them in some way.
+    """
+    available_tickers = dict()
+    output_files = os.listdir(OUTPUT_PATH)
+
+    for f in output_files:
+        ticker = f.split('_')[0]
+        statement = f.split('_')[1].split('.')[0]
+        if ticker in available_tickers.keys() and isinstance(available_tickers[ticker], list):
+            available_tickers[ticker].append(statement)
+        else:
+            available_tickers[ticker] = [statement]
+
+    return available_tickers
