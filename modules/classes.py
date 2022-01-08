@@ -69,13 +69,11 @@ class company():
         self.statements = dict()
 
         if method == 'scrape':
-            self.statements['is'] = scrape_statement(ticker_symbol, 'is', skip_rows = self.metrics_rows) if 'is' in initial_statements else dict()
-            self.statements['bs'] = scrape_statement(ticker_symbol, 'bs', skip_rows = self.metrics_rows) if 'bs' in initial_statements else dict()
-            self.statements['cfs'] = scrape_statement(ticker_symbol, 'cfs', skip_rows = self.metrics_rows) if 'cfs' in initial_statements else dict()
+            for x in initial_statements:
+                self.statements[x], self.currency = scrape_statement(ticker_symbol, x, skip_rows = self.metrics_rows, get_currency = 1)
         elif method == 'import':
-            self.statements['is'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_is.json') if 'is' in initial_statements else dict()
-            self.statements['bs'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_bs.json') if 'bs' in initial_statements else dict()
-            self.statements['cfs'] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_cfs.json') if 'cfs' in initial_statements else dict()
+            for x in initial_statements:
+                self.statements[x] = import_statement_json(OUTPUT_PATH + ticker_symbol + '_' + x + '.json')
         else:
             self.statements = dict()
 
