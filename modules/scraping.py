@@ -270,4 +270,4 @@ def scrape_statement(ticker, statement, skip_rows):
     statement_heading, statement_rows = get_statement_rows(driver, ticker, statement)
     statement_dict = dictify_statement(statement_heading, statement_rows, ticker, skip_rows)
     print('\n')
-    return statement_dict, currency
+    return statement_dict

@@ -3,7 +3,7 @@ from modules.cleaning import unclean_statement_heading
 import numpy as np
 import re
 
-def plot_companies(companies, metric, colors = ['blue','orange','green','red'], currency = '[Unspecified Currency]'):
+def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
     """
     Takes a list of company statements (dicts from company class) and a string
     that corresponds to an item in the dictionaries to plot.
@@ -27,6 +27,10 @@ def plot_companies(companies, metric, colors = ['blue','orange','green','red'], 
 
     returns: Plotly fig.
     """
+    # Choose currency of first company provided for use in plot labeling.
+    currency = companies[0].currency
+    print('Using reporting currency of {}: {}'.format(companies[0].ticker, currency))
+
     data = []
     # Identify and gather metric from the company statement dict
     for i, co in enumerate(companies):

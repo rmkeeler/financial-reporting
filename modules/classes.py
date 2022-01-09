@@ -31,7 +31,7 @@ class company():
     Automatically calculates key financial ratios from those documents in
     numpy arrays for easy trending.
     """
-    def __init__(self, ticker_symbol = None, initial_statements=['is','bs','cfs'], method = 'import'):
+    def __init__(self, ticker_symbol = None, initial_statements=['is','bs','cfs'], method = 'import', reporting_currency = '[Unspecified Currency]'):
         """
         Just provide a ticker symbol and optionally list the statements with
         which to pop your instance.
@@ -49,7 +49,7 @@ class company():
         initial_statements = [] if ticker_symbol == None else initial_statements
 
         self.ticker = ticker_symbol
-        self.currency = '[Unspecified Currency]'
+        self.currency = reporting_currency
 
         # point out rows in gathered statements that are calculations rather
         # than simply reported measurements.
