@@ -3,7 +3,7 @@ from modules.cleaning import unclean_statement_heading
 import numpy as np
 import re
 
-def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
+def plot_companies(companies, metric, colors = ['blue','orange','green','red','black','purple']):
     """
     Takes a list of company statements (dicts from company class) and a string
     that corresponds to an item in the dictionaries to plot.
@@ -34,8 +34,12 @@ def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
     data = []
     # Identify and gather metric from the company statement dict
     for i, co in enumerate(companies):
+        # Look through each statement for the metric
         for statement_key in co.statements.keys():
+            # Look through each value in the statement dict for the one that contains the metric specified
             for data_key in co.statements[statement_key].keys():
+                # Get data from the value that contains the metric as a key.
+                # Skip the value if it's not a dict (statement values are aleays in a dict)
                 if isinstance(co.statements[statement_key][data_key], dict) and metric in co.statements[statement_key][data_key].keys():
                     metric_location = data_key
                     metric_statement = statement_key
@@ -71,7 +75,11 @@ def plot_companies(companies, metric, colors = ['blue','orange','green','red']):
             title = 'Year',
             showgrid = False,
             showline = True,
-            linecolor = 'black'
+            linecolor = 'black',
+            # When companies have asymmetrical time frames, plotting them in random
+            # order can cause the series with the earliest year to put its earliest year
+            # at the end of the x axis scale. counter this with categoryorder below.
+            categoryorder = 'category ascending'
             ),
         yaxis = dict(
             title = metric + ' ' + currency + ' (B)' if metric_location == 'statement' else currency + ' USD',
