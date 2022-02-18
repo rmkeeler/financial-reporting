@@ -3,3 +3,6 @@ env
 modules/__pycache__
 config.py
 output
+vs-workspaces
+app
+prototype
