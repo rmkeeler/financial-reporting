@@ -376,7 +376,7 @@ class company():
                 marker = dict(color = 'black', size = 10, symbol = 'line-ns-open'),
                 x = x_var,
                 y = np.flip(metric_vals) / 1000000 if metric_location == 'statement' else np.flip(metric_vals),
-                name = metric
+                name = metric.replace('_',' ').title()
             )
 
             data.append(plot)
@@ -389,6 +389,12 @@ class company():
             height = 700,
             width = 1050,
             hovermode = 'x unified',
+            legend = dict(
+                orientation = 'h',
+                yanchor = 'bottom',
+                y = 1.02,
+                xanchor = 'left'
+            ),
             xaxis = dict(
                 title = 'Year',
                 showgrid = False,
@@ -406,6 +412,7 @@ class company():
         )
 
         fig = go.Figure(data = data, layout = layout)
+        fig.add_hline(y = 0, line_dash = 'dash', line_color = 'red', line_width = 2)
 
         return fig
 
